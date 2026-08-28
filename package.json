@@ -37,6 +37,14 @@
   ],
   "author": "dsh-session-notify contributors",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TelosmaYLX/dsh-session-notify.git"
+  },
+  "homepage": "https://github.com/TelosmaYLX/dsh-session-notify#readme",
+  "bugs": {
+    "url": "https://github.com/TelosmaYLX/dsh-session-notify/issues"
+  },
   "peerDependencies": {
     "cordis": ">=4.0.0-rc <5"
   },
