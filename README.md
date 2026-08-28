@@ -22,6 +22,7 @@
 - [功能特性](#功能特性)
 - [环境要求](#环境要求)
 - [安装](#安装)
+- [卸载](#卸载)
 - [快速开始](#快速开始)
 - [通知行为](#通知行为)
   - [触发条件](#触发条件)
@@ -156,6 +157,32 @@ dev_install_package dir=/解压/目录/package
 
 > [!IMPORTANT]
 > 无论用哪种方式，装完都需要**刷新一次浏览器页面** —— 客户端 bundle 通过 `__DSH_BOOT__` 启动图注入。
+
+## 卸载
+
+一条命令移除插件及其挂载（自动从 `cordis.patch.yml` 移除 insert 条目）：
+
+```bash
+dsh plugin --profile web remove @telosmaylx/dsh-session-notify
+```
+
+> [!NOTE]
+> 手动安装（方式四/五）的用户，需同步从 `~/.dsh/profiles/web/cordis.patch.yml` 删除对应 insert 条目，再刷新页面。
+
+### 卸载时自动清理的内容
+
+插件实现了完整的生命周期收尾（Cordis effect 纪律），卸载/禁用/HMR 热重载时：
+
+| 平面 | 自动释放的资源 |
+| --- | --- |
+| host | `session/event` 事件订阅、settings 命名空间、会话投影单元、设置注册重试定时器（`ctx.effect` 包装）；置卸载标志抑制已调度的微任务追加 |
+| client | 会话列表订阅、完成推送正文的轮询定时器、`window.__dsch_notify_debug` 调试钩子（按引用删除，防闭包泄漏）、页内 toast 容器 DOM |
+
+### 卸载后保留的数据
+
+- **设置配置**（语言、文案模板）留在 settings 文档，重装后自动恢复；
+- **自定义预设**存于浏览器 `localStorage`（`dsh-scn-custom-presets`），重装后仍在；
+- 历史会话中已追加的系统消息与 JSONL 日志**不会**被回滚（它们是会话数据的一部分，与官方侧边栏提示同语义）。
 
 ---
 
@@ -480,6 +507,7 @@ node scripts/verify-notice.mjs <session.jsonl.zstd>
 
 | 版本 | 日期 | 变更 |
 | --- | --- | --- |
+| **0.1.4** | 2026-08-28 | 补充完整卸载支持：`dispose` 生命周期收尾（host 置卸载标志抑制待追加微任务；client 清理正文轮询定时器、`__dsch_notify_debug` 钩子、toast 容器）；卸载文档与 FAQ 同步 |
 | **0.1.3** | 2026-08-28 | 声明官方 `dsh.bundle` manifest（`dsh plugin add` 一条命令自动挂载）；settings 重试定时器改为 `ctx.effect()` 包装（Cordis effect 纪律）；安装文档重排 |
 | 0.1.2 | 2026-08-27 | 包更名至 `@telosmaylx` scope（npm 用户名作用域） |
 | 0.1.1 | 2026-08-27 | GitHub、npm 安装方式文档化 |
