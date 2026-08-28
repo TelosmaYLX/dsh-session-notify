@@ -292,10 +292,14 @@ Session completed (took 3m25s, used 1,240 in / 3,560 out).
 | --- | --- |
 | 预设 | 下拉选择内置或自定义预设；「新增」把当前配置另存为自定义预设；当前预设可「删除」 |
 | 语言 | 5 种语言单选，切换即时重渲染整个面板 |
+| 推送方式 | 三选一：双通道（系统通知 + 页内提示，默认）/ 仅系统通知 / 仅页内提示 |
 | 推送标题 | `{title}` 引用会话标题，留空则直接用会话标题 |
 | 模板 × 5 | 每条结束原因（完成、出错、中止、阻塞、输出上限）独立一个 Chip 编辑器：文字 + 内联信息胶囊，光标处插入、点击移除、实时预览 |
 | 跳过子代理会话 | 复选框（保存时一并写入设置文档） |
-| 保存 | 写入宿主设置文档（`language` / `templates` / `titleTemplate`）；保存后显示「点击刷新」链接 |
+| 保存 | 写入宿主设置文档（`language` / `templates` / `titleTemplate` / `pushMode`）；保存后显示「点击刷新」链接 |
+
+> [!NOTE]
+> 「推送方式」的取舍：`dual`（默认）同时弹 Windows 系统通知与页内 toast，toast 是保底通道，防止系统通知被平台静默（专注助手、通知横幅关闭）。但 QQ 浏览器等 Chromium 壳浏览器会把 `Notification` 渲染成页内横幅而非 Windows 通知中心——此时 `dual` 会造成页内两个提示。这类浏览器请选「仅页内提示」（不再调用 `Notification`，页内只有一个小 toast）；Firefox 另需在地址栏手动授权通知，且窗口聚焦时通知显示为页内横幅、失焦才进系统通知中心。
 
 > [!NOTE]
 > 面板中「跳过子代理会话」保存的是设置文档里的布尔值；宿主 `cordis.patch.yml` 的 `config.skipSubagents` 是其启动默认值，两者任一为真即跳过。
@@ -507,6 +511,7 @@ node scripts/verify-notice.mjs <session.jsonl.zstd>
 
 | 版本 | 日期 | 变更 |
 | --- | --- | --- |
+| **0.1.5** | 2026-08-29 | 新增「推送方式」设置（双通道 / 仅系统通知 / 仅页内提示）：解决 QQ 浏览器等 Chromium 壳把 `Notification` 渲染成页内横幅导致的双提示；`pushMode` 加入设置 schema 与设置面板 |
 | **0.1.4** | 2026-08-28 | 补充完整卸载支持：`dispose` 生命周期收尾（host 置卸载标志抑制待追加微任务；client 清理正文轮询定时器、`__dsch_notify_debug` 钩子、toast 容器）；卸载文档与 FAQ 同步 |
 | **0.1.3** | 2026-08-28 | 声明官方 `dsh.bundle` manifest（`dsh plugin add` 一条命令自动挂载）；settings 重试定时器改为 `ctx.effect()` 包装（Cordis effect 纪律）；安装文档重排 |
 | 0.1.2 | 2026-08-27 | 包更名至 `@telosmaylx` scope（npm 用户名作用域） |
