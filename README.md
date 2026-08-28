@@ -1,6 +1,14 @@
 # dsh-session-notify
 
+[![npm version](https://img.shields.io/npm/v/@telosmaylx/dsh-session-notify)](https://www.npmjs.com/package/@telosmaylx/dsh-session-notify)
+[![npm downloads](https://img.shields.io/npm/dm/@telosmaylx/dsh-session-notify)](https://www.npmjs.com/package/@telosmaylx/dsh-session-notify)
+[![license MIT](https://img.shields.io/npm/l/@telosmaylx/dsh-session-notify)](LICENSE)
+
 **DeepSeek Harness plugin that notifies you when a session finishes** — a durable system message is appended into the session log (plugin-source notice, persisted to JSONL), and the browser gets a real push (Web Notification + toast). Which session, how long it took, tokens, cache-hit rate and generation speed — all customizable from the official settings panel.
+
+```bash
+npm install @telosmaylx/dsh-session-notify
+```
 
 - **Dual channel**: host system message + browser push (each notification has its own tag; toast always shows as a safety net)
 - **Official settings panel** (`设置 → 插件配置 → 会话完成提醒`): preset library, title template, per-reason message templates with insertable tags, live preview
