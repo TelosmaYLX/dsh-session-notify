@@ -7,7 +7,7 @@
 **DeepSeek Harness plugin that notifies you when a session finishes** — a durable system message is appended into the session log (plugin-source notice, persisted to JSONL), and the browser gets a real push (Web Notification + toast). Which session, how long it took, tokens, cache-hit rate and generation speed — all customizable from the official settings panel.
 
 ```bash
-npm install @telosmaylx/dsh-session-notify
+dsh plugin --profile web add @telosmaylx/dsh-session-notify
 ```
 
 - **Dual channel**: host system message + browser push (each notification has its own tag; toast always shows as a safety net)
@@ -46,17 +46,23 @@ npm install @telosmaylx/dsh-session-notify
 
 ## 安装
 
-### 方式一：GitHub 仓库
+### 方式一：npm 包（推荐，一条命令安装即自动挂载）
+
+```bash
+dsh plugin --profile web add @telosmaylx/dsh-session-notify
+```
+
+本插件按官方协议在 `package.json` 声明了 **`dsh.bundle` manifest**（`dsh.bundle.patch` → 仓库根目录 `cordis.patch.yml`）：`dsh plugin add` 在安装包的同时自动执行该 patch，把插件挂载进 profile 装配（host 事件订阅 + client 启动图注入）——**装完刷新浏览器即可，无需手写 cordis.patch.yml，无需 dev_install_package**。
+
+> ⚠️ 裸 `npm install @telosmaylx/dsh-session-notify` 只是把包装进 node_modules（当作普通依赖），**不会**向 DSH 注册插件——这是 DSH 生态的官方约定。挂载必须经由 `dsh plugin add`（或下方方式二/三/四）。
+
+### 方式二：GitHub 仓库
 
 ```bash
 # 在 Web GUI 会话中执行
-dev_install_package github=TelosmaYLX/dsh-session-notify    # 或 dsh plugin add github:TelosmaYLX/dsh-session-notify
-```
-
-### 方式二：npm 包
-
-```bash
-npm install @telosmaylx/dsh-session-notify    # 或从 npm 下载 tgz 解压
+dev_install_package github=TelosmaYLX/dsh-session-notify
+# 或
+dsh plugin --profile web add git+https://github.com/TelosmaYLX/dsh-session-notify.git
 ```
 
 ### 方式三：bundle 热装配（本地开发，dsh-super-injector）
@@ -66,7 +72,7 @@ npm install @telosmaylx/dsh-session-notify    # 或从 npm 下载 tgz 解压
 dev_install_package dir=</你的插件目录>
 ```
 
-### 方式四：cordis patch（重启后由 bundles 装配，与热装配双路径一致）
+### 方式四：cordis patch（手动装配，重启后由 bundles 装配，与热装配双路径一致）
 
 在 `~/.dsh/profiles/web/cordis.patch.yml` 追加：
 
