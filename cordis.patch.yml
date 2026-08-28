@@ -1,0 +1,10 @@
+# dsh-session-notify bundle for DeepSeek Harness (dsh).
+# 本文件由 package.json 的 dsh.bundle.patch 指向：`dsh plugin add` 安装本包时
+# 自动应用该 patch，把插件挂载进 profile 装配——npm / GitHub 源一条命令装完即用，
+# 无需手动编辑 cordis.patch.yml 或执行 dev_install_package。
+# 插件行经 profile 的 node_modules 按包名解析；host 半边（lib/index.js）订阅
+# session/event 写入系统消息，client 半边（lib/client.js）经启动图注入，
+# 负责浏览器推送与官方设置面板。
+- insert:
+    - id: dsh-session-notify
+      name: '@telosmaylx/dsh-session-notify'
