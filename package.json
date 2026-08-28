@@ -1,0 +1,40 @@
+{
+  "name": "@dsh-external/dsh-session-notify",
+  "version": "0.1.0",
+  "description": "会话完成系统消息提醒插件：turn 结束时向会话日志追加一条系统消息（plugin-source notice），并在浏览器端推送通知（系统通知 + 页内 toast）提醒用户。",
+  "private": false,
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./core": {
+      "default": "./lib/core.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "scripts",
+    "README.md"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "cordis": ">=4.0.0-rc <5"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build": "bash scripts/build.sh"
+  }
+}
