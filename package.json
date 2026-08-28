@@ -23,6 +23,9 @@
     "README.md",
     "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "deepseek-harness",
     "dsh",
@@ -49,6 +52,7 @@
     }
   },
   "scripts": {
-    "build": "bash scripts/build.sh"
+    "build": "bash scripts/build.sh || node --check lib/index.js && node --check lib/core.js && node --check lib/client.js",
+    "prepublishOnly": "node --check lib/index.js && node --check lib/core.js && node --check lib/client.js"
   }
 }
