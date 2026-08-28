@@ -530,6 +530,7 @@ node scripts/verify-notice.mjs <session.jsonl.zstd>
 
 | 版本 | 日期 | 变更 |
 | --- | --- | --- |
+| **0.1.7** | 2026-08-29 | 修复 0.1.6 的设置卡片崩溃：`notificationPermissionRow`/`requestPermissionNow` 曾引用 Card 组件内 state（作用域外）导致渲染 ReferenceError、整个设置卡片消失；改为自包含 + 回调传参 |
 | **0.1.6** | 2026-08-29 | 设置面板新增「通知权限」状态区（授权状态实时显示 + 一键请求授权按钮 + 被屏蔽时的地址栏操作指引）；授权改为**用户手势内请求**（Chromium 忽略非手势自动请求，Edge 对不熟悉站点自动屏蔽通知的典型场景得以解决）；FAQ 新增浏览器差异说明 |
 | **0.1.5** | 2026-08-29 | 新增「推送方式」设置（双通道 / 仅系统通知 / 仅页内提示）：解决 QQ 浏览器等 Chromium 壳把 `Notification` 渲染成页内横幅导致的双提示；`pushMode` 加入设置 schema 与设置面板 |
 | **0.1.4** | 2026-08-28 | 补充完整卸载支持：`dispose` 生命周期收尾（host 置卸载标志抑制待追加微任务；client 清理正文轮询定时器、`__dsch_notify_debug` 钩子、toast 容器）；卸载文档与 FAQ 同步 |
