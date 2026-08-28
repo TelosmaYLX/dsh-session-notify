@@ -1,60 +1,109 @@
+<div align="center">
+
 # dsh-session-notify
+
+**DSH（DeepSeek Harness）会话完成提醒插件 —— 每一轮结束，让完成状态主动找你，而不是你盯着屏幕等。**
 
 [![npm version](https://img.shields.io/npm/v/@telosmaylx/dsh-session-notify)](https://www.npmjs.com/package/@telosmaylx/dsh-session-notify)
 [![npm downloads](https://img.shields.io/npm/dm/@telosmaylx/dsh-session-notify)](https://www.npmjs.com/package/@telosmaylx/dsh-session-notify)
-[![license MIT](https://img.shields.io/npm/l/@telosmaylx/dsh-session-notify)](LICENSE)
+[![license](https://img.shields.io/npm/l/@telosmaylx/dsh-session-notify)](./LICENSE)
+[![node](https://img.shields.io/node/v/@telosmaylx/dsh-session-notify)](https://www.npmjs.com/package/@telosmaylx/dsh-session-notify)
+[![DSH](https://img.shields.io/badge/DSH-Web%20Profile-4D6BFE)](https://www.npmjs.com/package/@telosmaylx/dsh-session-notify)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/TelosmaYLX/dsh-session-notify/pulls)
 
-**DeepSeek Harness plugin that notifies you when a session finishes** — a durable system message is appended into the session log (plugin-source notice, persisted to JSONL), and the browser gets a real push (Web Notification + toast). Which session, how long it took, tokens, cache-hit rate and generation speed — all customizable from the official settings panel.
+*在会话日志写入可折叠的系统提示行（随 JSONL 持久化、恢复/回放可见），并推送浏览器系统通知 + 页内 toast。内置 5 种语言、可视化文案模板编辑器、自定义预设库，缓存命中率与生成速度与官方状态栏同口径。*
 
-```bash
-dsh plugin --profile web add @telosmaylx/dsh-session-notify
-```
+</div>
 
-- **Dual channel**: host system message + browser push (each notification has its own tag; toast always shows as a safety net)
-- **Official settings panel** (`设置 → 插件配置 → 会话完成提醒`): preset library, title template, per-reason message templates with insertable tags, live preview
-- **5 languages** (zh / zh-tw / en / ja / ko) for both the panel and the generated messages
-- **Real metrics** from official projections: cache hit rate (`tokenUsage`), tok/s decode speed (`sessionStats`), session title (`title`) — same source as dsh-web-ui
-- **Zero build deps**: hand-written ESM host + official `window.__ModuleLoader__` client bundle; verified end-to-end with headless Chrome probes included in `scripts/`
+---
 
-> 中文完整文档见下文。An English section follows the Chinese README below — see 功能特性/安装/使用/标签 tables for details.
+## 目录
 
-> DeepSeek Harness 会话完成提醒插件：**会话完成时，在会话内写一条系统消息，并向浏览器推送通知**（哪个会话、耗时、token、缓存命中率、生成速度，全部可自定义）。
-
-- ✅ 双通道提醒：**宿主系统消息**（写入会话日志，随 JSONL 持久化）+ **浏览器推送**（Web Notification + 页内 toast）
-- ✅ 官方设置面板：**设置 → 插件配置 → 会话完成提醒**（预设 / 语言 / 标题模板 / 消息模板 / 标签插入）
-- ✅ 5 语言界面与文案：简体中文 / 繁體中文 / English / 日本語 / 한국어
-- ✅ 零外部依赖打包：宿主插件为手写 ESM（无构建步骤），客户端 bundle 为官方 `window.__ModuleLoader__` 契约
-- ✅ 全链路实测：无头 Chrome 端到端验证（落盘 / 渲染 / 推送），仓库附带探针脚本
+- [功能特性](#功能特性)
+- [环境要求](#环境要求)
+- [安装](#安装)
+- [快速开始](#快速开始)
+- [通知行为](#通知行为)
+  - [什么触发提醒](#什么触发提醒)
+  - [推送正文从哪来](#推送正文从哪来)
+  - [通知示例](#通知示例)
+  - [通知权限](#通知权限)
+- [配置](#配置)
+  - [设置面板（UI 配置）](#设置面板ui-配置)
+  - [文案模板与占位符](#文案模板与占位符)
+  - [预设系统](#预设系统)
+  - [宿主配置项](#宿主配置项)
+- [工作原理](#工作原理)
+- [项目结构](#项目结构)
+- [开发与调试](#开发与调试)
+- [FAQ](#faq)
+- [更新日志](#更新日志)
+- [贡献](#贡献)
+- [相关链接](#相关链接)
+- [许可证](#许可证)
 
 ---
 
 ## 功能特性
 
-| 能力 | 说明 |
+### 📝 三通道提醒，一条不漏
+
+| 通道 | 形式 | 说明 |
+| --- | --- | --- |
+| **会话内系统消息** | 可折叠提示行 | 每轮结束把「会话已完成 / 出错 / 被阻塞…（用时 / 消耗 / 缓存命中 / 速度 / 错误详情）」作为**插件来源**的系统消息追加进会话日志。Web UI 渲染为可折叠行，随 JSONL 落盘，**恢复 / 回放会话后依然可见**。 |
+| **浏览器系统通知** | Web Notification | 原生弹窗。每次完成事件使用**独立 `tag`**（`dsh-session-notify:<timestamp>`）——不与前一次互相替换，也不被折叠成一个分组条目；点击通知聚焦回窗口。 |
+| **页内 toast** | 右下角浮动弹窗 | **永远展示**的保底通道：系统通知被平台静默 / 权限拒绝 / 环境不支持时依然有可见反馈；同屏最多 3 条（超出移除最旧）、10 秒自动消失、点击关闭。 |
+
+### 🖥️ 后台会话全覆盖
+
+- 宿主为**所有会话**（含后台 / 未打开窗口的）维护「最近一条通知正文」的会话投影单元（key = `session-complete-notify`），推送正文跨会话一致——**不依赖你恰好开着那个窗口**。
+- 客户端从会话列表快照观测所有会话的 `running` 位，`true → false` 边沿即触发推送，与官方 sidebar 提醒同策略（首次观测只记录基线，已在 idle 的会话不补发）。
+
+### 🌐 可定制到每一句话
+
+- **5 种语言**：简体中文 / 繁體中文 / English / 日本語 / 한국어——通知文案、时长/用量措辞、设置面板界面**全部随语言切换**（切换即时重渲染）。
+- **可视化模板编辑器**（Chip 胶囊编辑器）：动态信息渲染为**内联胶囊**（`{duration}` 等占位符代码永不露出）、「＋ 插入信息」在**光标处**插入（支持插到文字中间）、点击胶囊移除、每栏带**实时预览**（信息以示例值流入正文）。
+- **预设系统**：内置「默认」预设；当前配置可另存为**自定义预设**（localStorage 持久化），支持自动编号的未命名预设（`未命名`、`未命名 2`…）、「来自：xxx · 已修改」来源指示、删除预设。
+- **推送标题模板**：`{title}` 引用会话标题，留空则直接用会话标题。
+
+### 📊 与官方口径同源
+
+- **缓存命中率**取自官方 `tokenUsage` 投影（缓存读 /（未缓存输入 + 缓存读 + 缓存写））。
+- **生成速度**取自官方 `sessionStats` 投影（输出 token ÷ 解码耗时）。
+- 两者**与 dsh-web-ui 状态栏完全同口径**，不含排队 / 准备 / 工具时间；投影不可用或数据未就绪时自动退回本地用量聚合估算。
+
+### 🛡️ 工程质量
+
+- **只响应「实时」事件**：resume / replay 不重放旧通知，加载会话不刷屏。
+- **自免疫循环**：追加的消息类型（`user/message`）与自身监听目标（`turn/*`）不相交。
+- **零外部依赖**：宿主平面零裸 import，UserMessage 按 `dsh-llm` 的 `createUserMessage` 契约手工构造；纯逻辑层（`lib/core.js`）可独立测试。
+- **Cordis effect 纪律**：重试定时器包装 `ctx.effect()` 并返回 `clearTimeout` disposer、注册随 fiber 卸载自动撤销，HMR 热重载安全。
+- **安装即挂载**：声明官方 `dsh.bundle` manifest，`dsh plugin add` 一条命令装完即用，无需手写 patch。
+
+---
+
+## 环境要求
+
+| 依赖 | 要求 |
 | --- | --- |
-| 完成提醒 | 监听 `session/event` 火线，`turn/end`（`completed/aborted/blocked/error/max-tokens`）时触发 |
-| 系统消息 | 以 plugin-source 的 `user/message`（`form: 'notice'`）写入会话日志：UI 渲染为可折叠系统行（折叠态即显示正文渲染结果，含 `{title}`/用时/消耗，截断至 120 字符），随 JSONL 持久化，resume/replay 可见 |
-| 浏览器推送 | `running → idle` 边沿检测：Web Notification（每次独立 tag，不折叠）+ **toast 永远展示**（保底，同屏最多 3 条） |
-| 详情指标 | 用时 / token 用量 / **缓存命中率** / **速度 tok/s** —— 数据来自官方投影（`tokenUsage`、`sessionStats`），与 dsh-web-ui 状态栏同源 |
-| 会话标题 | `{title}` 标签：推送标题与消息正文都可插入会话标题（官方 `title` 投影） |
-| 设置面板 | 预设库（默认 + 自定义预设自动管理 / 命名预设）、标题模板、5 字段消息模板、5 语言、标签插入（光标处）、实时预览 |
-| 多语言 | 消息文案（标签/时长/用量/默认文案）+ 面板 UI 全量 i18n：`zh` `zh-tw` `en` `ja` `ko` |
-| 子代理过滤 | 默认跳过子代理会话（子代理由父会话编排） |
-| 投影同步 | 注册 `session-complete-notify` 投影单元：每个会话的最新通知全文推送到客户端，**后台会话同样有完整正文** |
+| DSH（DeepSeek Harness） | Web profile 部署；官方 base bundle 默认包含 `@deepseek-ai/dsh-settings`（设置命名空间）与 session-projection（投影），无需额外配置 |
+| cordis | `>=4.0.0-rc <5`（peer dependency） |
+| Node.js | `>=22`（宿主侧） |
+| 浏览器 | 支持 Web Notification 则有系统通知；不支持 / 权限拒绝 / 被静默时 toast 兜底 |
 
 ---
 
 ## 安装
 
-### 方式一：npm 包（推荐，一条命令安装即自动挂载）
+> ⚠️ **裸 `npm install` 只会安装依赖，不会注册插件**——这是 DSH 官方设计（"npm install only adds the dependency; it does not register the plugin"）。自动挂载的唯一官方途径是 `dsh plugin add`：它读取包内 `dsh.bundle` manifest（本插件自 0.1.3 起声明，指向仓库根 `cordis.patch.yml`）并自动应用。
+
+### 方式一：`dsh plugin add`（推荐，一条命令自动挂载）
 
 ```bash
 dsh plugin --profile web add @telosmaylx/dsh-session-notify
 ```
 
-本插件按官方协议在 `package.json` 声明了 **`dsh.bundle` manifest**（`dsh.bundle.patch` → 仓库根目录 `cordis.patch.yml`）：`dsh plugin add` 在安装包的同时自动执行该 patch，把插件挂载进 profile 装配（host 事件订阅 + client 启动图注入）——**装完刷新浏览器即可，无需手写 cordis.patch.yml，无需 dev_install_package**。
-
-> ⚠️ 裸 `npm install @telosmaylx/dsh-session-notify` 只是把包装进 node_modules（当作普通依赖），**不会**向 DSH 注册插件——这是 DSH 生态的官方约定。挂载必须经由 `dsh plugin add`（或下方方式二/三/四）。
+安装包的同时自动应用 `cordis.patch.yml`，把插件挂载进 profile 装配（host 事件订阅 + client 启动图注入）。装完**刷新浏览器页面**即可。
 
 ### 方式二：GitHub 仓库
 
@@ -62,17 +111,17 @@ dsh plugin --profile web add @telosmaylx/dsh-session-notify
 # 在 Web GUI 会话中执行
 dev_install_package github=TelosmaYLX/dsh-session-notify
 # 或
-dsh plugin --profile web add git+https://github.com/TelosmaYLX/dsh-session-notify.git
+dsh plugin add github:TelosmaYLX/dsh-session-notify
 ```
 
-### 方式三：bundle 热装配（本地开发，dsh-super-injector）
+### 方式三：npm 包（下载 tgz 解压后本地安装）
 
 ```bash
-# 在 Web GUI 会话中执行（dir 换成你的克隆目录）
-dev_install_package dir=</你的插件目录>
+npm pack @telosmaylx/dsh-session-notify
+dev_install_package dir=</解压/目录>
 ```
 
-### 方式四：cordis patch（手动装配，重启后由 bundles 装配，与热装配双路径一致）
+### 方式四：手动 cordis patch（等价，不依赖安装器）
 
 在 `~/.dsh/profiles/web/cordis.patch.yml` 追加：
 
@@ -83,120 +132,329 @@ dev_install_package dir=</你的插件目录>
       config: {}
 ```
 
-> 装配要求：`@deepseek-ai/dsh-settings`（设置命名空间）、`@deepseek-ai/dsh-session-projection`（投影）在部署中启用（官方 base bundle 默认包含）。
-
-安装后**刷新浏览器页面**一次（客户端 bundle 通过 `__DSH_BOOT__` 启动图注入）。
+> 装配要求：`@deepseek-ai/dsh-settings`（设置命名空间）、`@deepseek-ai/dsh-session-projection`（投影）在部署中启用——官方 base bundle 默认包含。安装后**刷新浏览器页面**一次（客户端 bundle 通过 `__DSH_BOOT__` 启动图注入）。
 
 ---
 
-## 使用
+## 快速开始
 
-1. 打开 **设置 → 插件配置 → 会话完成提醒**
-2. 配置（见下）→ **保存** → 状态位提示 `已保存 ✓ · 刷新页面后生效` → 点击 **刷新**
-3. 任一会话（顶部会话）完成时：
-   - 会话尾部出现系统消息（文案 = 你的模板）
-   - 右下角 toast 弹出（标题 = 你的标题模板 + 会话标题）
-   - 授权后系统通知同步弹出
+1. 按上面任一方式安装并刷新页面。
+2. 发起任意一轮对话，等它结束——右下角弹出 toast、浏览器弹系统通知、会话日志里出现可折叠的系统提示行：
 
-### 设置面板字段
+   ```
+   会话已完成（用时 1 分 12 秒，消耗 1,240 输入 / 3,560 输出，缓存命中 96.5%，92 tok/s）。
+   ```
 
-| 字段 | 说明 |
+3. 首次收到完成事件时，浏览器会请求通知权限（**每页只问一次**）；允许后后续完成都有系统通知。
+4. 打开 **设置 → 插件 → 会话完成提醒**：切换语言、编辑文案模板、另存预设。保存后点「点击刷新」让两侧（宿主 + 客户端）重新读取，新语言 / 模板即生效。
+
+---
+
+## 通知行为
+
+### 什么触发提醒
+
+每轮对话结束（`turn/end`）时按结束原因判断，命中白名单即提醒：
+
+| 结束原因 | 含义 | 默认提醒 |
+| --- | --- | --- |
+| `completed` | 会话正常完成 | ✅ |
+| `aborted` | 会话中止 | ✅ |
+| `blocked` | 会话被阻塞 | ✅ |
+| `error` | 会话出错（附错误详情，超长截断） | ✅ |
+| `max-tokens` | 达到输出 token 上限 | ✅ |
+| `interrupted` | 中断（崩溃恢复后由持久化后端补写的孤儿轮次关闭标记） | ❌ 默认排除，可配置加入 |
+
+**子代理会话默认跳过**（`header.origin === 'subagent'` 或 `delegationDepth > 0`）——子代理由父会话编排，逐轮提醒是噪音；可在宿主配置关闭跳过。
+
+### 推送正文从哪来
+
+客户端在会话列表观测到 `running: true → false` 边沿时推送，正文按以下优先级获取（最长轮询 6 秒，400ms 间隔）：
+
+1. **宿主投影**（`session-complete-notify` key）——每个会话都有，**后台会话同样拿到全文**；
+2. **会话事件窗口里的 notice 节点**（`kind=context` + `form=notice`）——正在查看的会话，落盘后立即可用；
+3. **降级**——「详情见会话内系统消息」+ 工作区信息（`cwd` 最后一段）。
+
+### 通知示例
+
+默认文案（简体中文）：
+
+```
+✅ 会话已完成（用时 3 分 25 秒，消耗 12,400 输入 / 35,600 输出，缓存命中 96.5%，92 tok/s）。
+⛔ 会话出错：connection timeout（用时 12 秒）。
+🚫 会话达到输出上限（用时 2 分 10 秒，消耗 1,240 输入 / 4,096 输出）。
+```
+
+自定义模板示例（在设置面板编辑）：
+
+```
+{title} 干完了！用时 {duration}，跑了 {usage}，速度 {tps}
+```
+
+### 通知权限
+
+- 权限状态为 `default`（未决定）时：**每页加载只发起一次授权请求**，后续完成事件不再触发询问；
+- `granted`：每次完成都发系统通知（独立 tag，互不覆盖）；
+- `denied` 或环境不支持：仅 toast（永远展示，保底可见）。
+
+---
+
+## 配置
+
+绝大多数配置在 **DSH Web UI → 设置 → 插件 → 会话完成提醒** 面板完成（保存后点「点击刷新」生效）。仅「触发原因白名单」「跳过子代理」两项在宿主 `cordis.patch.yml` 的 `config` 中配置。
+
+### 设置面板（UI 配置）
+
+面板在官方「设置 → 插件」面板中注册（`settings.plugin.item` keyed slot，key = `session-complete-notify`），样式逐值复刻原生插件卡片（12px 圆角、展开/收起、旋转 chevron、footer 状态位 + 弃置 ghost + 主色保存按钮）：
+
+| 区域 | 内容 |
 | --- | --- |
-| **预设（载入）** | 下拉显示当前应用的预设；选预设 = 载入其全部配置（语言 + 标题 + 5 模板）。内置仅「**默认**」 |
-| **新增** | 将当前配置另存为**命名**自定义预设 |
-| **修改 / 删除** | 选中自定义预设时出现：修改 = 当前表单写回该预设；删除 = 移除 |
-| **语言** | 简体中文 / 繁體中文 / English / 日本語 / 한국어 —— 面板与消息文案即时切换 |
-| **推送标题** | 占位符提示「留空则使用会话标题」；`{title}` 标签经「＋ 会话标题」插入，如 `【完成】{title}` |
-| **模板 × 5** | 完成 / 出错 / 中止 / 阻塞 / 输出上限：文字 + 内联标签胶囊（点击 × 删除、＋ 光标处插入、全选可删）；空态直接展示默认文案（始终可编辑） |
-| 预览 | 纯文本最终效果（示例值直出，无标签样式） |
+| **预设** | 下拉选择内置 / 自定义预设；「新增」把当前配置另存为自定义预设；当前预设可「删除」 |
+| **语言** | 5 种语言单选，切换即时重渲染整个面板 |
+| **推送标题** | `{title}` 引用会话标题，留空则直接用会话标题 |
+| **模板 × 5** | 每条结束原因（完成/出错/中止/阻塞/输出上限）独立一个 Chip 编辑器：文字 + 内联信息胶囊，光标处插入 / 点击移除 / 实时预览 |
+| **跳过子代理会话** | 复选框（保存时一并写入设置文档） |
+| **保存** | 写入宿主设置文档（language / templates / titleTemplate）；保存后显示「点击刷新」链接 |
 
-### 标签（可插入信息）
+> 说明：面板中「跳过子代理会话」复选框保存的是设置文档中的布尔值；宿主 `cordis.patch.yml` 的 `config.skipSubagents` 是其启动默认值，两者任一为真即跳过。
 
-| 标签 | 胶囊文字 | 内容 | 示例 |
+### 文案模板与占位符
+
+设置面板中每条原因独立一个模板输入框，**标签即开关**——在模板里插入对应信息标签，该项数据才会显示：
+
+| 占位符 | 含义 | 示例值 |
+| --- | --- | --- |
+| `{title}` | 会话标题（推送标题模板也可用） | `重构登录模块` |
+| `{duration}` | 本轮用时（`turn/start` 起表 → `turn/end` 结束） | `1 分 12 秒` / `3m25s` |
+| `{usage}` | token 消耗（输入 = 未缓存 + 缓存读 + 缓存写） | `1,240 输入 / 3,560 输出` |
+| `{error}` | 错误信息（无错误时显示 `none`；单行化、≤80 字符） | `connection timeout` |
+| `{cache}` | 缓存命中率（官方投影口径，无数据为空） | `96.5%` |
+| `{tps}` | 生成速度（官方投影口径，无数据为空） | `92 tok/s` |
+| `{label}` | ⚠️ **已废弃**——渲染时自动剥除，旧模板兼容（插入菜单已移除） | — |
+
+模板留空 = 使用内置默认文案（自动带用时与消耗）。折叠行 `summary` 与正文同源（渲染结果截断至 ≤120 字符）——只看折叠行的用户也能看到真实标题与用时/消耗。
+
+### 预设系统
+
+- **内置预设**：仅「默认」（作为基线，其余以自定义预设承载）。
+- **自定义预设**：保存在 `localStorage`（key = `dsh-scn-custom-presets`）：
+  - 「新增」→ 命名保存为自定义预设；保存后可「修改」自动同步、「删除」移除；
+  - **自动编号的未命名预设**：从「默认/空白」直接保存时，自动生成 `未命名`、`未命名 2`、`未命名 3`…（编号取当前最大 + 1）；
+  - 表单显示「来自：xxx · 已修改」来源指示（来自预设但内容已改动时）。
+- **保存即同步**：保存时若表单来源是自定义预设，则更新该预设；否则新建/继续编号未命名预设。
+
+### 宿主配置项
+
+```yaml
+- insert:
+    - id: dsh-session-notify
+      name: '@telosmaylx/dsh-session-notify'
+      config:
+        reasons: [completed, aborted, blocked, error, max-tokens]
+        skipSubagents: true
+```
+
+| 字段 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `{title}` | 会话标题 | 会话标题（官方 title 投影） | DeepSeek Harness 插件开发 |
-| `{duration}` | 用时 | 本轮耗时（语言化格式） | 1 分 23 秒 / 1m23s |
-| `{usage}` | 消耗 | 输入 / 输出 token | 1,600 输入 / 3,560 输出 |
-| `{error}` | 错误 | 错误详情；无错误显示 `none` | 连接超时 |
-| `{cache}` | 缓存命中 | 缓存命中率（官方 tokenUsage 四桶口径） | 96.5% |
-| `{tps}` | 速度 TPS | 输出 token ÷ 解码耗时（官方 sessionStats 口径） | 115 tok/s |
-
-### 预设模型（自动生命周期）
-
-- **默认预设**：空模板 + 空标题（= 内置默认文案）
-- **保存 = 自动落入一个预设**：
-  - 来自自定义预设 → 更新它（修改即自动，无需手动按钮）
-  - 来自默认/空白 → 新建 **未命名预设**；已存在则递增编号（未命名预设 2 / 3 …），从不覆盖旧的
-  - 从未命名预设本身载入再改 → 更新该未命名预设
-- 预设库持久化在浏览器 localStorage（`dsh-scn-custom-presets`）
+| `reasons` | `string[]` | `[completed, aborted, blocked, error, max-tokens]` | 触发提醒的 `turn/end` 原因白名单 |
+| `skipSubagents` | `boolean` | `true` | 跳过子代理会话（`origin=subagent` 或 `delegationDepth>0`） |
 
 ---
 
 ## 工作原理
 
-### 生命周期
+插件分**宿主平面**（Node）与**客户端平面**（浏览器），中间靠会话日志（JSONL）与官方会话投影衔接：
 
 ```
-用户会话 turn/end
-   └─ host lib/index.js（session/event 监听）
-        ├─ tracker：turn/start 起表，assistant/message 累计用量
-        ├─ 官方投影快照：tokenUsage → 缓存命中率；sessionStats → tok/s；title → 会话标题
-        ├─ buildNotice(kind, reason, 数据, {language, templates}) → 多语言/模板渲染
-        ├─ queueMicrotask → session.append('user/message', plugin-notice, {surfaceOp:'append'})
-        └─（投影单元自动更新：每个会话的最新通知全文）
-   └─ client lib/client.js（sessions.list running→idle 边沿）
-        ├─ 正文：投影（每个会话都有全文）→ 事件窗口 notice 节点 → 降级
-        ├─ 标题：用户标题模板（{title} = 会话标题；留空 = 会话标题）
-        └─ 通知：独立 tag（不折叠）+ toast 永远展示（保底）
+┌─────────────────── 宿主平面（lib/index.js，Node）──────────────────┐
+│                                                                     │
+│  session/event 火线                                                 │
+│   ├─ turn/start        → tracker 起表（key: sessionId:turn）        │
+│   ├─ assistant/message → 累加该轮 token 用量                        │
+│   └─ turn/end          → reason.kind ∈ reasons ？                   │
+│                            ├─ 子代理会话？跳过                       │
+│                            ├─ 读官方投影：cache / tps / title        │
+│                            ├─ 按语言+模板构建通知（summary ≤120 字） │
+│                            └─ queueMicrotask 追加系统消息            │
+│                                 （避开 append 重入窗口）             │
+│                                                                     │
+│  settings.register   → 官方「设置 → 插件」命名空间（失败退避重试）   │
+│  sessionProjections  → 注册投影单元（key=session-complete-notify）  │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ user/message (source: plugin, form: notice)
+                               ▼  JSONL 持久化 + 投影推送
+┌─────────────────── 客户端平面（lib/client.js，浏览器）──────────────┐
+│                                                                     │
+│  会话列表订阅：running true → false 边沿 → pushCompletion            │
+│   ├─ 取正文：投影 → 事件窗口 notice → 降级（轮询 ≤6s）               │
+│   ├─ Web Notification（独立 tag，点击聚焦）                          │
+│   └─ 页内 toast（永远展示，≤3 条，10s 自动消失）                     │
+│                                                                     │
+│  slots.inject('settings.plugin.item') → 设置卡片（预设/语言/模板）   │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 关键设计取舍
+### 关键设计决策
 
-| 取舍 | 说明 |
-| --- | --- |
-| 追加必须微任务延迟 | `session/event` 观察者回调运行在 `turn/end` 那次 append 的发布边界内，同步重入会被拒绝（`"session append cannot reenter…"`）——`queueMicrotask` 在边界复位后执行 |
-| 指标不存插件内存 | 缓存命中/速度/标题取自官方投影（宿主维护、无内存状态，热重载不丢）——与 dsh-web-ui 状态栏同源 |
-| 客户端零构建 | 手写 ESM；宿主经 `createRequire` 锚定 profile 共享依赖枢纽取 schemastery/zod（从仓库目录以 realpath 加载时裸导入不可用） |
-| 双通道解耦 | 系统消息（宿主，持久）与 push（客户端，即时）各自独立；正文以投影通知全文为准保证跨会话一致 |
-| 标签即开关 | 模板里插了标签就显示、不插就不显示（无独立开关） |
-| 注册竞态兜底 | 设置命名空间注册遇 duplicate（热重载下的旧 fiber 注销竞态）自动退避重试 8 次并落盘日志 |
-
-### 多语言
-
-- **宿主消息**：标签、时长（`1 分 23 秒` / `1m23s` / `1分 23초`…）、用量措辞、默认文案骨架、错误分隔符随语言
-- **面板 UI**：标题/字段/预设/按钮/提示/标签名/预览示例全量 i18n（约 45 串 × 5）
-
----
-
-## 脚本（验证工具）
-
-| 脚本 | 用途 |
-| --- | --- |
-| `scripts/verify-notice.mjs` | 解压多帧 zstd 会话日志，核验系统消息落盘（plugin-source notice）+ turn/end 触发点 |
-| `scripts/probe-client.mjs` | 客户端激活冒烟（boot graph / 模块加载 / 报错） |
-| `scripts/probe-client-e2e.mjs` | 端到端推送实测：无头 Chrome 等待真实完成事件，抓取 toast 内容（可钉会话窗口：`node scripts/probe-client-e2e.mjs 900000 <sessionId>`） |
-| `scripts/probe-card-render.mjs` | 无头完整流程：设置 → 插件 → 卡片渲染 + 控制台错误 |
-| `scripts/probe-settings-card.mjs` | 设置面板卡片检测（DOM 文本） |
+- **不重放**：只处理实时事件，resume / replay 不会补发历史通知。
+- **无自我循环**：插件追加 `user/message`，自身只监听 `turn/*`，事件类型不相交。
+- **零外部 import**：插件从仓库目录以 realpath 加载，`@deepseek-ai/*` 无法裸解析——宿主平面用 `createRequire` 锚定 profile 共享依赖枢纽（`.dsh/profiles/node_modules`）取 `schemastery`（设置 schema）与 `zod`（投影 schema）；UserMessage 按 `dsh-llm` 契约手工构造（`id = crypto.randomUUID()`，deep-freeze 由 `session.append` 的 adopt 快照阶段完成）。
+- **append 重入规避**：`session/event` 观察者回调运行在 `turn/end` 那次 append 的发布边界之内（dsh-session 在 dispatch 前置 `entry.appending`、finally 复位），同步 append 会被拒绝——因此推迟到 `queueMicrotask`（微任务在本次同步栈含 finally 复位之后才执行）。
+- **effect 纪律**：设置注册的退避重试定时器包装在 `ctx.effect()` 中并返回 `clearTimeout` disposer——插件在重试窗口内被卸载 / 热重载时定时器随 fiber 拆除，不会对已释放的 ctx 触发注册（极老环境无 `ctx.effect` API 时退化为裸定时器 + ctx 已拆除兜底捕获）。
+- **HMR 安全**：`core.js` 导入带 `?v=1` 缓存破坏（HMR 重载按 URL 键控）；设置注册遇到热重载竞态（duplicate）时自动退避重试（最多 8 次、400ms×attempts）。
+- **投影注册双轨**：优先 `ctx.root.get('sessionProjections')`（最靠近宿主根的一份），拿不到时回退注入实例；只注册进注入实例时客户端可能读不到投影单元 → 推送正文走降级路径，属尽力而为，不影响会话内系统消息。
 
 ---
 
 ## 项目结构
 
 ```
-lib/index.js          # 宿主：事件订阅 / 计时 / 设置命名空间（5 语言 schema）/ 投影注册 / 通知构建 + 追加
-lib/core.js           # 纯逻辑：计时/用量聚合/命中率/tps/多语言标签/模板渲染（可独立单测）
-lib/client.js         # 浏览器：推送（通知 + toast）/ 设置卡片（ChipEditor + 预设库 + 标题模板）
-scripts/build.sh      # 构建（node --check 校验手写 ESM）
-scripts/*.mjs         # 验证/探针脚本（见上表）
+dsh-session-notify/
+├── lib/
+│   ├── index.js      # 宿主平面（Node）：session/event 订阅 → 系统消息落盘；
+│   │                 #   settings 命名空间注册（schemastery schema，退避重试）；
+│   │                 #   sessionProjections 投影单元（后台会话推送正文）
+│   ├── core.js       # 纯逻辑层（零依赖，可独立测试）：轮次计时/用量聚合、
+│   │                 #   5 语言文案表、时长/用量/缓存/速度格式化、
+│   │                 #   模板渲染（{title}{duration}{usage}{error}{cache}{tps}）
+│   └── client.js     # 浏览器平面：完成推送（系统通知 + toast）、
+│                     #   设置卡片（Chip 模板编辑器 + 预设系统 + 实时预览）
+├── scripts/
+│   ├── build.sh                # 零构建：仅 node --check 语法校验
+│   ├── verify-notice.mjs       # 校验会话日志落盘证据（zstd 多帧逐帧解压）
+│   ├── probe-client.mjs        # 探针：客户端装配
+│   ├── probe-client-e2e.mjs    # 探针：客户端端到端
+│   ├── probe-card-render.mjs   # 探针：设置卡片渲染
+│   ├── probe-settings-card.mjs # 探针：设置面板卡片
+│   ├── probe-settings-check.mjs# 探针：设置面板检查
+│   └── probe-diag-settings.mjs # 探针：settings 诊断
+├── cordis.patch.yml  # dsh.bundle manifest——dsh plugin add 自动挂载的凭证
+├── package.json      # dsh.bundle（patch）+ dsh.client（web 注入）双 manifest；
+│                     #   exports: "." / "./client" / "./core"
+├── LICENSE           # MIT
+└── README.md         # 本文档
 ```
 
-## 开发提示
+---
 
-- 宿主热重载后会出现一次「用时 0 秒」：内存计时器随重载重置（下轮恢复；缓存命中/速度/标题来自投影不受影响）
-- 设置保存后需刷新页面：宿主实时生效，但客户端 bundle 需整页加载
-- 通知权限：首次完成时浏览器会请求（权限 `default` 只发起一次）；拒绝不影响 toast
-- 发布包：`npm run build`（node --check）→ `npm pack` → `telosmaylx-dsh-session-notify-*.tgz`
+## 开发与调试
 
-## License
+```bash
+# 语法校验（零构建，prepublishOnly 同款检查）
+npm run build
 
-MIT
+# 本地热装配（在 Web GUI 会话中执行，dir 换成克隆目录）
+dev_install_package dir=</克隆目录>
+```
+
+### 调试入口
+
+| 入口 | 内容 |
+| --- | --- |
+| `~/.dsh/session-complete-notify.log` | 宿主诊断日志：设置注册/重试/失败、投影注册、追加失败堆栈 |
+| 浏览器 console `[dsh-session-notify-client]` | 客户端日志：权限状态、通知展示、设置保存 |
+| `window.__dsch_notify_debug.readNotice(id)` | 手动读取指定会话的最新通知正文 |
+| `window.__dsch_notify_debug.snapshotDebug(id)` | 会话尾部节点类型 + notice 数量 + 最近正文（前 200 字） |
+| `node scripts/verify-notice.mjs <session.jsonl.zstd>` | 离线校验：解出会话日志中所有 plugin-source 事件与 turn/end 尾部序列（不传路径则自动选 `~/.dsh/sessions` 下最新会话） |
+
+### 发布
+
+```bash
+# 发布前自动执行 prepublishOnly（语法校验）
+npm publish --registry=https://registry.npmjs.org --access public
+```
+
+---
+
+## FAQ
+
+<details>
+<summary><b>npm install 之后为什么不自动挂载？</b></summary>
+
+这是 DSH 官方设计：`npm install` 只把包装进依赖树，不注册插件。自动挂载的唯一途径是 `dsh plugin add`——它读取包内 `dsh.bundle` manifest（本插件自 0.1.3 起声明）并自动应用 `cordis.patch.yml`。参见[安装](#安装)。
+
+</details>
+
+<details>
+<summary><b>为什么「中断」（interrupted）不提醒？</b></summary>
+
+`interrupted` 是崩溃恢复后由持久化后端补写的孤儿轮次关闭标记，用户视角的「完成」不包含它（否则恢复会话会刷一屏误报）。确有需要可在宿主配置 `reasons` 中加入。
+
+</details>
+
+<details>
+<summary><b>后台会话（没打开窗口的）也会推送吗？</b></summary>
+
+会。客户端从会话列表快照观测所有会话的 `running` 边沿；正文优先取宿主投影——宿主为所有会话（含后台）维护投影单元，因此推送正文跨会话一致。投影不可用时降级为事件窗口 / 工作区信息。
+
+</details>
+
+<details>
+<summary><b>保存设置后为什么提示刷新页面？</b></summary>
+
+宿主在注册命名空间时读取一次设置，客户端 bundle 在页面加载时装配。保存后点「点击刷新」让两侧重新读取，新语言 / 模板即生效。
+
+</details>
+
+<details>
+<summary><b>缓存命中率 / 速度数据从哪来？为什么有时是空的？</b></summary>
+
+来自官方 `sessionProjections`（`tokenUsage` / `sessionStats`），与 dsh-web-ui 状态栏同口径。宿主读取投影快照失败或数据尚未就绪时，退回本地用量聚合估算，仍无数据则该项留空（标签插了也不显示）。
+
+</details>
+
+<details>
+<summary><b>通知正文里的错误信息太长 / 有换行怎么办？</b></summary>
+
+摘要行（折叠行）与错误详情都会单行化并截断（摘要 ≤120 字符、错误 ≤80 字符、标签内 ≤40 字符）。自定义模板中的 `{error}` 同样单行化，上限 80 字符，超长以 `…` 结尾。
+
+</details>
+
+<details>
+<summary><b>可以自定义系统通知的图标 / 声音吗？</b></summary>
+
+当前版本使用浏览器默认通知样式，不注入自定义图标 / 声音。toast 样式为固定深色卡片。如需这些能力欢迎提 Issue / PR。
+
+</details>
+
+---
+
+## 更新日志
+
+| 版本 | 日期 | 变更 |
+| --- | --- | --- |
+| **0.1.3** | 2026-08-28 | 声明官方 `dsh.bundle` manifest（`dsh plugin add` 一条命令自动挂载）；settings 重试定时器改为 `ctx.effect()` 包装（Cordis effect 纪律）；安装文档重排 |
+| 0.1.2 | 2026-08-27 | 包更名至 `@telosmaylx` scope（npm 用户名作用域） |
+| 0.1.1 | 2026-08-27 | GitHub / npm 安装方式文档化 |
+| 0.1.0 | 2026-08-26 | 初始版本：会话内系统消息 + 浏览器推送 + 官方设置面板 |
+
+---
+
+## 贡献
+
+欢迎 Issue 与 PR：
+
+1. Fork → 新建分支（`feat/xxx`）
+2. 改动后跑 `npm run build`（语法校验）
+3. 提交 PR，说明动机与验证方式
+
+提交前请遵守 [Cordis 开发教程](https://deepseek-harness.github.io/deepseek-harness/develop/cordis-tutorial) 纪律：
+
+- Cordis 之外的资源（定时器、订阅、watcher）必须包装在 `ctx.effect()` 中并返回 disposer；
+- 配置项显式 `id` 防止编辑漂移；
+- 插件须声明 `dsh.bundle` manifest 才能被 `dsh plugin add` 识别安装。
+
+---
+
+## 相关链接
+
+- [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) —— DSH 插件精选列表（投稿规范：`dsh.bundle` 是安装唯一凭证）
+- [Cordis 开发教程](https://deepseek-harness.github.io/deepseek-harness/develop/cordis-tutorial) —— 插件开发全流程（01-07 章，本地副本见 `dsh-docs/cordis-tutorial/`）
+- [npm 包主页](https://www.npmjs.com/package/@telosmaylx/dsh-session-notify)
+- [GitHub 仓库](https://github.com/TelosmaYLX/dsh-session-notify)
+
+---
+
+## 许可证
+
+[MIT](./LICENSE) © dsh-session-notify contributors
