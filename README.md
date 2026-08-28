@@ -48,7 +48,7 @@ dev_install_package github=TelosmaYLX/dsh-session-notify    # 或 dsh plugin add
 ### 方式二：npm 包（发布后）
 
 ```bash
-npm install @telosma/dsh-session-notify    # 或从 npm 下载 tgz 解压
+npm install @telosmaylx/dsh-session-notify    # 或从 npm 下载 tgz 解压
 ```
 
 ### 方式三：bundle 热装配（本地开发，dsh-super-injector）
@@ -65,7 +65,7 @@ dev_install_package dir=</你的插件目录>
 ```yaml
 - insert:
     - id: dsh-session-notify
-      name: '@telosma/dsh-session-notify'
+      name: '@telosmaylx/dsh-session-notify'
       config: {}
 ```
 
@@ -181,7 +181,7 @@ scripts/*.mjs         # 验证/探针脚本（见上表）
 - 宿主热重载后会出现一次「用时 0 秒」：内存计时器随重载重置（下轮恢复；缓存命中/速度/标题来自投影不受影响）
 - 设置保存后需刷新页面：宿主实时生效，但客户端 bundle 需整页加载
 - 通知权限：首次完成时浏览器会请求（权限 `default` 只发起一次）；拒绝不影响 toast
-- 发布包：`npm run build`（node --check）→ `npm pack` → `telosma-dsh-session-notify-*.tgz`
+- 发布包：`npm run build`（node --check）→ `npm pack` → `telosmaylx-dsh-session-notify-*.tgz`
 
 ## License
 

@@ -122,7 +122,7 @@ const checks = {}
       const entries = (boot.entries || []).map(e => e.id)
       return JSON.stringify({
         graphLength: entries.length,
-        hasEntry: entries.includes('@telosma/dsh-session-notify'),
+        hasEntry: entries.includes('@telosmaylx/dsh-session-notify'),
         entry: entries.find(e => e.includes('session-notify')),
         notificationSupported: typeof window.Notification !== 'undefined',
         notificationPermission: typeof window.Notification !== 'undefined' ? window.Notification.permission : 'n/a',
