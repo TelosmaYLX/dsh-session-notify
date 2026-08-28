@@ -46,14 +46,14 @@ npm install @telosmaylx/dsh-session-notify
 
 ## 安装
 
-### 方式一：GitHub 仓库（发布后）
+### 方式一：GitHub 仓库
 
 ```bash
 # 在 Web GUI 会话中执行
 dev_install_package github=TelosmaYLX/dsh-session-notify    # 或 dsh plugin add github:TelosmaYLX/dsh-session-notify
 ```
 
-### 方式二：npm 包（发布后）
+### 方式二：npm 包
 
 ```bash
 npm install @telosmaylx/dsh-session-notify    # 或从 npm 下载 tgz 解压
