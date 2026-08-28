@@ -25,7 +25,7 @@
 | 能力 | 说明 |
 | --- | --- |
 | 完成提醒 | 监听 `session/event` 火线，`turn/end`（`completed/aborted/blocked/error/max-tokens`）时触发 |
-| 系统消息 | 以 plugin-source 的 `user/message`（`form: 'notice'`）写入会话日志：UI 渲染为可折叠系统行，随 JSONL 持久化，resume/replay 可见 |
+| 系统消息 | 以 plugin-source 的 `user/message`（`form: 'notice'`）写入会话日志：UI 渲染为可折叠系统行（折叠态即显示正文渲染结果，含 `{title}`/用时/消耗，截断至 120 字符），随 JSONL 持久化，resume/replay 可见 |
 | 浏览器推送 | `running → idle` 边沿检测：Web Notification（每次独立 tag，不折叠）+ **toast 永远展示**（保底，同屏最多 3 条） |
 | 详情指标 | 用时 / token 用量 / **缓存命中率** / **速度 tok/s** —— 数据来自官方投影（`tokenUsage`、`sessionStats`），与 dsh-web-ui 状态栏同源 |
 | 会话标题 | `{title}` 标签：推送标题与消息正文都可插入会话标题（官方 `title` 投影） |
