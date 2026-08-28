@@ -1,7 +1,7 @@
 {
   "name": "@dsh-external/dsh-session-notify",
   "version": "0.1.0",
-  "description": "会话完成系统消息提醒插件：turn 结束时向会话日志追加一条系统消息（plugin-source notice），并在浏览器端推送通知（系统通知 + 页内 toast）提醒用户。",
+  "description": "DSH session completion notifier: appends a plugin system message to the session log on turn/end and pushes browser notifications (Web Notification + toast), with a fully customizable official settings panel (presets, 5-language templates, cache-hit rate & tok/s from official projections).",
   "private": false,
   "type": "module",
   "main": "./lib/index.js",
@@ -20,11 +20,25 @@
   "files": [
     "lib",
     "scripts",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "session-notify",
+    "notification",
+    "completion-reminder",
+    "agent"
+  ],
+  "author": "dsh-session-notify contributors",
   "license": "MIT",
   "peerDependencies": {
     "cordis": ">=4.0.0-rc <5"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "dsh": {
     "client": {

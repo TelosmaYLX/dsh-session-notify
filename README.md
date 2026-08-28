@@ -1,5 +1,15 @@
 # dsh-session-notify
 
+**DeepSeek Harness plugin that notifies you when a session finishes** — a durable system message is appended into the session log (plugin-source notice, persisted to JSONL), and the browser gets a real push (Web Notification + toast). Which session, how long it took, tokens, cache-hit rate and generation speed — all customizable from the official settings panel.
+
+- **Dual channel**: host system message + browser push (each notification has its own tag; toast always shows as a safety net)
+- **Official settings panel** (`设置 → 插件配置 → 会话完成提醒`): preset library, title template, per-reason message templates with insertable tags, live preview
+- **5 languages** (zh / zh-tw / en / ja / ko) for both the panel and the generated messages
+- **Real metrics** from official projections: cache hit rate (`tokenUsage`), tok/s decode speed (`sessionStats`), session title (`title`) — same source as dsh-web-ui
+- **Zero build deps**: hand-written ESM host + official `window.__ModuleLoader__` client bundle; verified end-to-end with headless Chrome probes included in `scripts/`
+
+> 中文完整文档见下文。An English section follows the Chinese README below — see 功能特性/安装/使用/标签 tables for details.
+
 > DeepSeek Harness 会话完成提醒插件：**会话完成时，在会话内写一条系统消息，并向浏览器推送通知**（哪个会话、耗时、token、缓存命中率、生成速度，全部可自定义）。
 
 - ✅ 双通道提醒：**宿主系统消息**（写入会话日志，随 JSONL 持久化）+ **浏览器推送**（Web Notification + 页内 toast）
