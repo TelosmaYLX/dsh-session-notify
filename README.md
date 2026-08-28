@@ -38,14 +38,27 @@
 
 ## 安装
 
-### 方式一：bundle 热装配（本机 dsh-super-injector）
+### 方式一：GitHub 仓库（发布后）
 
 ```bash
 # 在 Web GUI 会话中执行
-dev_install_package dir=D:/Software/dsh-external/dsh-session-notify
+dev_install_package github=TelosmaYLX/dsh-session-notify    # 或 dsh plugin add github:TelosmaYLX/dsh-session-notify
 ```
 
-### 方式二：cordis patch（重启后由 bundles 装配，与热装配双路径一致）
+### 方式二：npm 包（发布后）
+
+```bash
+npm install @dsh-external/dsh-session-notify    # 或从 npm 下载 tgz 解压
+```
+
+### 方式三：bundle 热装配（本地开发，dsh-super-injector）
+
+```bash
+# 在 Web GUI 会话中执行（dir 换成你的克隆目录）
+dev_install_package dir=</你的插件目录>
+```
+
+### 方式四：cordis patch（重启后由 bundles 装配，与热装配双路径一致）
 
 在 `~/.dsh/profiles/web/cordis.patch.yml` 追加：
 
@@ -87,7 +100,7 @@ dev_install_package dir=D:/Software/dsh-external/dsh-session-notify
 
 | 标签 | 胶囊文字 | 内容 | 示例 |
 | --- | --- | --- | --- |
-| `{title}` | 会话标题 | 会话标题（官方 title 投影） | 编写DeepSeek Harness会话完成提醒插件 |
+| `{title}` | 会话标题 | 会话标题（官方 title 投影） | DeepSeek Harness 插件开发 |
 | `{duration}` | 用时 | 本轮耗时（语言化格式） | 1 分 23 秒 / 1m23s |
 | `{usage}` | 消耗 | 输入 / 输出 token | 1,600 输入 / 3,560 输出 |
 | `{error}` | 错误 | 错误详情；无错误显示 `none` | 连接超时 |
@@ -129,7 +142,7 @@ dev_install_package dir=D:/Software/dsh-external/dsh-session-notify
 | --- | --- |
 | 追加必须微任务延迟 | `session/event` 观察者回调运行在 `turn/end` 那次 append 的发布边界内，同步重入会被拒绝（`"session append cannot reenter…"`）——`queueMicrotask` 在边界复位后执行 |
 | 指标不存插件内存 | 缓存命中/速度/标题取自官方投影（宿主维护、无内存状态，热重载不丢）——与 dsh-web-ui 状态栏同源 |
-| 客户端零构建 | 手写 ESM；宿主经 `createRequire` 锚定 profile 共享依赖枢纽取 schemastery/zod（从 D 盘 realpath 加载时裸导入不可用） |
+| 客户端零构建 | 手写 ESM；宿主经 `createRequire` 锚定 profile 共享依赖枢纽取 schemastery/zod（从仓库目录以 realpath 加载时裸导入不可用） |
 | 双通道解耦 | 系统消息（宿主，持久）与 push（客户端，即时）各自独立；正文以投影通知全文为准保证跨会话一致 |
 | 标签即开关 | 模板里插了标签就显示、不插就不显示（无独立开关） |
 | 注册竞态兜底 | 设置命名空间注册遇 duplicate（热重载下的旧 fiber 注销竞态）自动退避重试 8 次并落盘日志 |
