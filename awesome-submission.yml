@@ -1,0 +1,10 @@
+# awesome-dsh-plugin 收录提交文件
+# 提交到 fork 后的仓库 data/plugins/ 目录，文件名：TelosmaYLX__dsh-session-notify.yml
+# 规范参考：https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md
+
+url: https://github.com/TelosmaYLX/dsh-session-notify
+name: TelosmaYLX/dsh-session-notify
+category: notify
+description:
+  en: Notifies you with a browser notification and toast whenever a session turn ends, with 5-language templates and custom presets.
+  zh: 会话轮次结束时推送浏览器系统通知与页内提示，内置 5 种语言模板与自定义预设。
