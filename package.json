@@ -1,6 +1,6 @@
 {
   "name": "@telosmaylx/dsh-session-notify",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "DSH session completion notifier: appends a plugin system message to the session log on turn/end and pushes browser notifications (Web Notification + toast), with a fully customizable official settings panel (presets, 5-language templates, cache-hit rate & tok/s from official projections).",
   "private": false,
   "type": "module",
