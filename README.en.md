@@ -509,7 +509,7 @@ Both the summary line (collapsible row) and error details are single-lined and t
 <details>
 <summary><b>Can I customize the icon or sound of system notifications?</b></summary>
 
-The current version uses the browser's default notification style and does not inject a custom icon or sound; the toast is a fixed dark card. If you need these capabilities, feel free to open an Issue or PR.
+The **icon is customizable**: in the settings panel's "Notification image" section you can upload a hero image and an icon (global), or insert the `{icon}` tag in a per-reason template to assign a per-reason icon (takes precedence over the global one). **Sound** is not customizable (the system/browser default is used); the toast is a fixed dark card. For other needs, feel free to open an Issue or PR.
 
 </details>
 
