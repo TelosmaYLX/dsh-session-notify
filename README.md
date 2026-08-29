@@ -509,7 +509,7 @@ node scripts/verify-notice.mjs <session.jsonl.zstd>
 <details>
 <summary><b>可以自定义系统通知的图标或声音吗？</b></summary>
 
-当前版本使用浏览器默认通知样式，不注入自定义图标或声音，toast 为固定深色卡片。如需这些能力欢迎提 Issue 或 PR。
+图标**可以自定义**：设置面板「通知图片」区可上传**通知大图**与**通知图标**（全局），也可在各原因模板中插入 `{icon}` 标签为该原因单独指定图标（优先于全局）；**声音**暂不支持自定义（沿用系统/浏览器默认），toast 为固定深色卡片。如有其他需求欢迎提 Issue 或 PR。
 
 </details>
 
