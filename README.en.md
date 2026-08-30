@@ -49,6 +49,16 @@ At the end of every conversation turn, writes "completed / errored / blocked / h
 
 ## Features
 
+<div align="center">
+
+<img src="screenshot/screenshot1.png" width="220" alt="Title editor">
+<img src="screenshot/ScreenShot2png.png" width="220" alt="Content editor">
+<img src="screenshot/ScreenShot3.png" width="220" alt="Completion notification">
+<img src="screenshot/ScreenShot4.png" width="220" alt="AI question notification">
+<img src="screenshot/ScreenShot5.png" width="220" alt="Error notification">
+
+</div>
+
 ### Three-Channel Notifications, None Missed
 
 | Channel | Form | Description |

@@ -49,6 +49,16 @@
 
 ## 주요 기능
 
+<div align="center">
+
+<img src="screenshot/screenshot1.png" width="220" alt="제목 편집기">
+<img src="screenshot/ScreenShot2png.png" width="220" alt="본문 편집기">
+<img src="screenshot/ScreenShot3.png" width="220" alt="작업 완료 알림">
+<img src="screenshot/ScreenShot4.png" width="220" alt="AI 질문 알림">
+<img src="screenshot/ScreenShot5.png" width="220" alt="작업 오류 알림">
+
+</div>
+
 ### 3채널 알림, 하나도 빠짐없이
 
 | 채널 | 형태 | 설명 |

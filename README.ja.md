@@ -49,6 +49,16 @@
 
 ## 機能概要
 
+<div align="center">
+
+<img src="screenshot/screenshot1.png" width="220" alt="タイトルエディタ">
+<img src="screenshot/ScreenShot2png.png" width="220" alt="本文エディタ">
+<img src="screenshot/ScreenShot3.png" width="220" alt="タスク完了通知">
+<img src="screenshot/ScreenShot4.png" width="220" alt="AI 質問通知">
+<img src="screenshot/ScreenShot5.png" width="220" alt="タスクエラー通知">
+
+</div>
+
 ### 3 チャンネルで通知、取りこぼしなし
 
 | チャンネル | 形式 | 説明 |
