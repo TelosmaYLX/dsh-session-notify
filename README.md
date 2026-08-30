@@ -290,7 +290,7 @@ Session "重构登录模块" completed (took 3m25s, used 1,240 in / 3,560 out).
 
 ## 配置
 
-绝大多数配置在 **DSH Web UI → 设置 → 插件 → 会话完成提醒** 面板完成（保存后点「点击刷新」生效）。仅「触发原因白名单」与「跳过子代理」两项在宿主 `cordis.patch.yml` 的 `config` 中配置。
+绝大多数配置在 **DSH Web UI → 设置 → 插件 → 会话完成提醒** 面板完成（保存后点「点击刷新」生效）。仅「触发原因白名单」在宿主 `cordis.patch.yml` 的 `config` 中配置（跳过子代理在面板中以复选框控制）。
 
 ### 设置面板
 
@@ -307,7 +307,7 @@ Session "重构登录模块" completed (took 3m25s, used 1,240 in / 3,560 out).
 | 跳过子代理会话 | 复选框（保存时一并写入设置文档） |
 | 通知权限 | 状态实时显示：已授权（绿）/ 尚未授权（附「请求授权」按钮）/ 已被浏览器屏蔽（附地址栏操作指引）/ 环境不支持 |
 | 按原因定制标题 | 折叠区（默认收起）：每个结束原因一个独立标题输入框，留空 = 用全局模板或语言默认标题 |
-| 保存 | 写入宿主设置文档（`language` / `templates` / `titleTemplate` / `titleTemplates` / `pushMode`）；保存后显示「点击刷新」链接 |
+| 保存 | 写入宿主设置文档（`language` / `templates` / `titleTemplate` / `titleTemplates` / `pushMode` / `skipSubagents`）；保存后显示「点击刷新」链接 |
 | 重置 | 一键还原默认值（**语言保留当前选择**，标题/模板/推送方式恢复默认）并立即保存 |
 
 > [!NOTE]

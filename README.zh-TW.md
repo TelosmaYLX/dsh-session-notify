@@ -290,7 +290,7 @@ Session "重构登录模块" completed (took 3m25s, used 1,240 in / 3,560 out).
 
 ## 設定
 
-絕大多數設定在 **DSH Web UI → 設定 → 外掛 → 會話完成提醒** 面板完成（儲存後點「點擊重新整理」生效）。僅「觸發原因白名單」與「跳過子代理」兩項在宿主 `cordis.patch.yml` 的 `config` 中設定。
+絕大多數設定在 **DSH Web UI → 設定 → 外掛 → 會話完成提醒** 面板完成（儲存後點「點擊重新整理」生效）。僅「觸發原因白名單」在宿主 `cordis.patch.yml` 的 `config` 中設定（跳過子代理在面板中以核取方塊控制）。
 
 ### 設定面板
 
@@ -307,7 +307,7 @@ Session "重构登录模块" completed (took 3m25s, used 1,240 in / 3,560 out).
 | 跳過子代理會話 | 核取方塊（儲存時一併寫入設定文件） |
 | 通知權限 | 狀態即時顯示：已授權（綠）/ 尚未授權（附「請求授權」按鈕）/ 已被瀏覽器封鎖（附網址列操作指引）/ 環境不支援 |
 | 按原因自訂標題 | 收合區（預設收合）：每個結束原因一個獨立標題輸入框，留空 = 用全域模板或語言預設標題 |
-| 儲存 | 寫入宿主設定文件（`language` / `templates` / `titleTemplate` / `titleTemplates` / `pushMode`）；儲存後顯示「點擊重新整理」連結 |
+| 儲存 | 寫入宿主設定文件（`language` / `templates` / `titleTemplate` / `titleTemplates` / `pushMode` / `skipSubagents`）；儲存後顯示「點擊重新整理」連結 |
 | 重置 | 一鍵還原預設值（**語言保留目前選擇**，標題/模板/推送方式恢復預設）並立即儲存 |
 
 > [!NOTE]

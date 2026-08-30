@@ -290,7 +290,7 @@ Session "重构登录模块" completed (took 3m25s, used 1,240 in / 3,560 out).
 
 ## Configuration
 
-Most configuration is done in the **DSH Web UI → Settings → Plugins → Session Completion Notify** panel (takes effect after saving and clicking "Click to Refresh"). Only "Trigger reason whitelist" and "Skip subagents" are configured in the `config` of the host `cordis.patch.yml`.
+Most configuration is done in the **DSH Web UI → Settings → Plugins → Session Completion Notify** panel (takes effect after saving and clicking "Click to Refresh"). Only the "Trigger reason whitelist" is configured in the `config` of the host `cordis.patch.yml` (skipping subagents is controlled by a checkbox in the panel).
 
 ### Settings Panel
 
@@ -307,7 +307,7 @@ The panel is registered in the official "Settings → Plugins" panel (`settings.
 | Skip subagent sessions | Checkbox (written into the settings document on save) |
 | Notification permissions | Status shown in real time: granted (green) / not yet granted (with a "Request Authorization" button) / blocked by the browser (with address-bar instructions) / environment unsupported |
 | Per-reason titles | Collapsible area (collapsed by default): one title input per end reason; empty = use the global template or the language default title |
-| Save | Writes to the host settings document (`language` / `templates` / `titleTemplate` / `titleTemplates` / `pushMode`); shows a "Click to Refresh" link after saving |
+| Save | Writes to the host settings document (`language` / `templates` / `titleTemplate` / `titleTemplates` / `pushMode` / `skipSubagents`); shows a "Click to Refresh" link after saving |
 | Reset | One-click restore of default values (**the current language is kept**, titles/templates/push mode restore to defaults) and saves immediately |
 
 > [!NOTE]
