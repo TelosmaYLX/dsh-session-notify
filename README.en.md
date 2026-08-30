@@ -13,7 +13,7 @@
 [![DSH](https://img.shields.io/badge/DSH-Web%20Profile-4D6BFE)](https://www.npmjs.com/package/@telosmaylx/dsh-session-notify)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/TelosmaYLX/dsh-session-notify/pulls)
 
-At the end of every conversation turn, writes "completed / errored / blocked / hit the cap" along with duration and token usage into the session log, and pushes a browser system notification and an in-page toast. Built-in 5 languages, 4 style presets (kaomoji / Felyne / Neko girl / DeepSeek-chan), a visual copy-template editor, and a custom preset library; cache hit rate and generation speed come from the official projections, consistent with the status bar.
+At the end of every conversation turn, writes "completed / errored / blocked / hit the cap" along with duration and token usage into the session log, and pushes a browser system notification and an in-page toast; **when the AI asks you a question, it also alerts you immediately** — no need to watch the session page. Built-in 5 languages, 4 style presets (kaomoji / Felyne / Neko girl / DeepSeek-chan), a visual copy-template editor, and a custom preset library; cache hit rate and generation speed come from the official projections, consistent with the status bar.
 
 </div>
 
@@ -62,12 +62,17 @@ At the end of every conversation turn, writes "completed / errored / blocked / h
 - The host maintains a "most recent notification body" session projection unit (key = `session-complete-notify`) for all sessions, including background ones whose windows aren't open, so the pushed body is consistent across sessions and does not depend on you happening to have that window open.
 - The client observes the `running` flag of all sessions from the session list snapshot; a `true → false` edge triggers a push, following the same strategy as the official sidebar reminders (the first observation only records a baseline; sessions already idle are not back-filled).
 
+### Instant Question Alerts
+
+- When the AI calls `ask_user_question` to ask you something, the host immediately writes the "question title + body" into a dedicated projection unit (key = `session-complete-notify-question`), and the client polls it in real time and pops an alert — **even if you are looking at another page, you won't miss the question**.
+- The question copy is fully customizable: the title follows the "per-reason title → global title → default title" chain, the body supports the `{question}` placeholder (injected with the AI's actual question), and the `{image}` / `{icon}` media switches work as well.
+
 ### Customizable Down to Every Sentence
 
 - **5 languages**: Simplified Chinese, Traditional Chinese, English, Japanese, Korean — the notification copy, the duration and usage wording, and the settings panel UI all switch with the language (instant re-render on switch).
 - **Visual template editor** (Chip editor): dynamic information renders as inline chips (placeholder code never leaks); "+ Insert Info" inserts at the cursor (can be inserted mid-text); clicking a chip removes it; each field has a live preview (information flows into the body with sample values).
-- **Preset system**: a built-in "Default" baseline plus 4 one-click style presets (kaomoji / Felyne / Neko girl / DeepSeek-chan — a full set of stylized titles and per-reason copy); the current configuration can be saved as a custom preset (persisted in `localStorage`), supports auto-numbered unnamed presets (`Untitled`, `Untitled 2`…), a "From: xxx · Modified" origin indicator, and deleting presets.
-- **Push title template**: when left empty, each reason uses a default title (completed = task completed / errored = task errored / …); `{title}` references the session title.
+- **Preset system**: a built-in "Default" baseline plus 4 one-click style presets (kaomoji / Felyne / Neko girl / DeepSeek-chan — a full set of stylized copy for the title, all 5 end reasons and the question); the current configuration can be saved as a custom preset (persisted in `localStorage`), supports auto-numbered unnamed presets (`Untitled`, `Untitled 2`…), a "From: xxx · Modified" origin indicator, and deleting presets.
+- **Push title template**: when left empty, each reason uses a default title (completed = task completed / errored = task errored / … / question = AI is asking you a question); `{title}` references the session title.
 
 ### Same Source as the Official Metrics
 
@@ -222,6 +227,8 @@ When each conversation turn ends (`turn/end`), the end reason is checked; hittin
 
 **Subagent sessions are skipped by default** (`header.origin === 'subagent'` or `delegationDepth > 0`) — subagents are orchestrated by their parent session, so per-turn notifications are noise; the skip can be disabled in the host configuration.
 
+**Question alerts are a separate channel and do NOT go through the whitelist above**: when the AI calls `ask_user_question` and waits for your answer (a `tool/call` event), the alert fires immediately, and it becomes invalid once the `tool/result` returns. Questions are not written to the session log — they only pop a notification.
+
 ### Where Does the Push Body Come From
 
 When the client observes a `running: true → false` edge in the session list, it pushes; the body is fetched with the following priority (polls for up to 6 seconds at 400ms intervals):
@@ -229,6 +236,8 @@ When the client observes a `running: true → false` edge in the session list, i
 1. **Host projection** (key = `session-complete-notify`) — available for every session; background sessions get the full text too;
 2. **The notice node in the session event window** (`kind=context` + `form=notice`) — for the session being viewed, available immediately after persistence;
 3. **Fallback** — "See the in-session system message for details" + workspace info (last segment of `cwd`).
+
+Question alerts take their body from the host projection as well (key = `session-complete-notify-question`, with the title and body already rendered by the host); on older hosts without that projection, the client assembles the title and `{question}` text itself as a fallback.
 
 ### Notification Examples
 
@@ -293,8 +302,8 @@ The panel is registered in the official "Settings → Plugins" panel (`settings.
 | Language | Radio selection among 5 languages; switching instantly re-renders the whole panel |
 | Push mode | Choose one of three: dual channel (system notification + in-page toast, default) / system notification only / in-page only |
 | Notification media | Two sources for the large image: **per-reason upload** — insert the `{image}` token via "＋ Insert info → Image" in a template and pick a local file (shown as a chip with a thumbnail in the editor, auto-compressed to 512px wide with a 16:9 center crop matching the notification display ratio, saved per reason); **global image/icon** — two upload cards side by side in one row (**icon first**; empty = a rounded "+" tile; click to upload; **image 512×288 with a 16:9 center crop, icon 128×128 with a 1:1 square center crop**; once uploaded the card shows the thumbnail — **click it for a fullscreen preview of the full original image (aspect-ratio-preserving, uncropped)**, the "×" at the top-right removes it). Icon left empty = site default icon, or insert the `{icon}` token in a template for a **per-reason icon** (takes precedence over the global one). Effective on the system-notification channel only (the in-page toast is a text card); the "Send" test buttons apply them too |
-| Title | A collapsible section (**collapsed by default**, click to expand): the **global push title** (shared by all reasons; a Chip editor — info inserted via "＋ Insert info" shows as **chip tags**, click a chip to remove; **when the notification is sent, info tokens in the title (duration / usage / error / cache / speed) are replaced with the real values, never shown as raw codes**; when left empty, each reason uses a default title — completed = task completed, errored = task errored, aborted = task aborted, blocked = task blocked, cap = task hit the output cap) plus **per-reason titles** (5 inputs, one per reason; empty = use the global or the language default) |
-| Content | A collapsible section (**collapsed by default**, click to expand). When expanded, each end reason (completed, errored, aborted, blocked, output cap) is a **single-row layout** (reason label + Chip editor + a "+" insert button that turns into "−" while the menu is open + a **paper-plane send button**; the buttons are rectangular and vertically centered): **with an empty template (default preset) the editor shows the default text**; text + inline info chips, insert at the cursor; for `{image}`/`{icon}` chips **click the thumbnail to preview the full image, only the "×" removes it** (prevents accidental removal); other chips are removed by clicking; **after editing, clearing shows the "leave empty to use the default text" placeholder (non-selectable/non-deletable)** |
+| Title | A collapsible section (**collapsed by default**, click to expand): the **global push title** (shared by all reasons; a Chip editor — info inserted via "＋ Insert info" shows as **chip tags**, click a chip to remove; **when the notification is sent, info tokens in the title (duration / usage / error / cache / speed) are replaced with the real values, never shown as raw codes**; when left empty, each reason uses a default title — completed = task completed, errored = task errored, aborted = task aborted, blocked = task blocked, cap = task hit the output cap, question = AI is asking you a question) plus **per-reason titles** (6 inputs, one per reason, each with a "+" insert button for info tokens — including "Question", no images/icons; inserted at the caret; **takes precedence over the global title**; empty = use the global or the language default) |
+| Content | A collapsible section (**collapsed by default**, click to expand). When expanded, each reason (completed, errored, aborted, blocked, output cap, question) is a **single-row layout** (reason label + Chip editor + a "+" insert button that turns into "−" while the menu is open + a **paper-plane send button**; the buttons are rectangular and vertically centered): **with an empty template (default preset) the editor shows the default text**; text + inline info chips, insert at the cursor; for `{image}`/`{icon}` chips **click the thumbnail to preview the full image, only the "×" removes it** (prevents accidental removal); other chips are removed by clicking; **after editing, clearing shows the "leave empty to use the default text" placeholder (non-selectable/non-deletable)**; the question row's default text is "AI is asking: {question}", where `{question}` is replaced by the AI's actual question when sent (the insert menu offers a "Question" token too, with the same interaction as the other tokens) |
 | Skip subagent sessions | Checkbox (written into the settings document on save) |
 | Notification permissions | Status shown in real time: granted (green) / not yet granted (with a "Request Authorization" button) / blocked by the browser (with address-bar instructions) / environment unsupported |
 | Per-reason titles | Collapsible area (collapsed by default): one title input per end reason; empty = use the global template or the language default title |
@@ -324,6 +333,7 @@ Each end reason has its own template input; **the token is the switch** — the 
 | `{tps}` | Generation speed (per the official projection; empty when no data) | `92 tok/s` |
 | `{image}` | Custom notification-image switch: insert via "＋ Insert info → Image" and pick a local file (auto-compressed to 512px), independent per reason; stripped from the rendered body, never written into the session log; removing the token also clears that reason's image data | — |
 | `{icon}` | Custom notification-icon switch: insert via "＋ Insert info → Icon" and pick a local file (auto-compressed to 128×128 square), independent per reason; stripped from the rendered body, never written into the session log; takes precedence over the global "Notification icon"; removing the token also clears that reason's icon data | — |
+| `{question}` | **Question-row-only placeholder**: replaced with the AI's actual question text when sent; integrated with the "＋ Insert info" menu (pick the "Question" token, or just type it — both render as a chip); only available in the question channel, inserted in other reason rows it is replaced with an empty string (no literal leak) | `Should I continue generating the report?` |
 | `{label}` | Deprecated — automatically stripped at render time; old templates remain compatible (the option has been removed from the insert menu) | — |
 
 An empty template uses the built-in default copy (the uniform "Session "{title}" <state>. Click to view." phrasing; duration and usage are not included). The collapsible row's `summary` shares the same source as the body (the rendered result is truncated to 120 characters) — users who only look at the collapsible row still see the real title, duration and usage.
@@ -365,6 +375,7 @@ The plugin is split into a **host plane** (Node) and a **client plane** (browser
 │  session/event 火线                                                 │
 │   ├─ turn/start        → tracker 起表（key: sessionId:turn）        │
 │   ├─ assistant/message → 累加该轮 token 用量                        │
+│   ├─ tool/call         → ask_user_question？写提问投影（标题+正文） │
 │   └─ turn/end          → reason.kind ∈ reasons ？                   │
 │                            ├─ 子代理会话？跳过                       │
 │                            ├─ 读官方投影：cache / tps / title        │
@@ -374,6 +385,8 @@ The plugin is split into a **host plane** (Node) and a **client plane** (browser
 │                                                                     │
 │  settings.register   → 官方「设置 → 插件」命名空间（失败退避重试）   │
 │  sessionProjections  → 注册投影单元（key=session-complete-notify）  │
+│                        + 提问投影（key=session-complete-notify-     │
+│                          question，等待回答期间持续推送）            │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │ user/message (source: plugin, form: notice)
                                ▼  JSONL 持久化 + 投影推送
@@ -383,6 +396,8 @@ The plugin is split into a **host plane** (Node) and a **client plane** (browser
 │   ├─ 取正文：投影 → 事件窗口 notice → 降级（轮询 ≤6s）               │
 │   ├─ Web Notification（独立 tag，点击聚焦）                          │
 │   └─ 页内 toast（永远展示，≤3 条，10s 自动消失）                     │
+│  提问投影轮询（key=session-complete-notify-question）：              │
+│   有值 → 立即弹提醒（标题+正文），无值清空                            │
 │                                                                     │
 │  slots.inject('settings.plugin.item') → 设置卡片（预设/语言/模板）   │
 └─────────────────────────────────────────────────────────────────────┘
@@ -410,7 +425,8 @@ dsh-session-notify/
 │   │                 #   sessionProjections 投影单元（后台会话推送正文）
 │   ├── core.js       # 纯逻辑层（零依赖，可独立测试）：轮次计时与用量聚合、
 │   │                 #   5 语言文案表、时长/用量/缓存/速度格式化、
-│   │                 #   模板渲染（{title}{duration}{usage}{error}{cache}{tps}）
+│   │                 #   模板渲染（{title}{duration}{usage}{error}{cache}{tps}）、
+│   │                 #   提问正文构建（buildQuestionBody，{question} + 媒体剥除）
 │   └── client.js     # 浏览器平面：完成推送（系统通知 + toast）、
 │                     #   设置卡片（Chip 模板编辑器 + 预设系统 + 实时预览）
 ├── scripts/
@@ -468,6 +484,13 @@ node scripts/verify-notice.mjs <session.jsonl.zstd>
 <summary><b>Why isn't it auto-mounted after npm install?</b></summary>
 
 This is DSH's official design: `npm install` only puts the package into the dependency tree, it does not register the plugin. The only way to auto-mount is `dsh plugin add` — it reads the `dsh.bundle` manifest inside the package (declared by this plugin since 0.1.3) and automatically applies `cordis.patch.yml`. See [Installation](#installation).
+
+</details>
+
+<details>
+<summary><b>Will I also be alerted when the AI asks me a question?</b></summary>
+
+Yes. When the AI calls `ask_user_question` and waits for your answer, the host immediately writes the "question title + body" into a dedicated projection (key = `session-complete-notify-question`), and the client pops an alert as soon as it polls the value — even if you are looking at another page, you won't miss it. The question copy is as customizable as the completion notifications: the "Title / Content" sections of the settings panel each have a "Question" row, the body supports the `{question}` placeholder (injected with the AI's actual question), and the `{image}` / `{icon}` media switches work too. Once you answer (`tool/result`), the alert is invalidated and does not linger.
 
 </details>
 
@@ -537,6 +560,7 @@ The "Notification Permissions" area of the settings panel shows the current stat
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| **0.1.17** | 2026-08-30 | **Instant question alerts (customizable)**: when the AI calls `ask_user_question`, an alert pops immediately (dedicated projection `session-complete-notify-question`; the host renders the title + body; invalidated automatically once answered); the question copy enters the settings panel "Title / Content" sections (the 6th "Question" row), supports the `{question}` placeholder (injected with the AI's actual question) and the `{image}` / `{icon}` media switches; the 4 style presets (kaomoji / Felyne / Neko girl / DeepSeek-chan) gain question copy in all 5 languages; on older hosts without the question projection the client assembles a fallback itself |
 | **0.1.16** | 2026-08-30 | **Interaction fix**: holding Backspace no longer strips every chip before reaching the text — the real cause: with the caret at the end of a text run, chip detection skipped the whole run and removed the preceding chip instead (e.g. 【A】123【B】456【C】 + 3 Backspaces at the end produced 123456); chips are now deleted only when no text sits between the caret and the chip, otherwise normal character deletion applies (the same 3 presses yield 【A】123【B】4; the Delete key is fixed the same way) |
 | **0.1.15** | 2026-08-30 | **Interaction polish**: the Content fold section is **expanded by default** (per-reason bodies are editable as soon as the panel opens); after deleting a chip the caret now **skips empty text nodes and <br> placeholders** and lands on real content — no more "backspacing through every tag before you can reach the text", so holding Backspace deletes continuously |
 | **0.1.14** | 2026-08-30 | **Code-review fixes**: deleting a preset now asks for confirmation (prevents accidental loss); deleting the preset in use restores the form to the **host-saved configuration** (no longer resets to defaults — prevents an accidental Save from overwriting the applied config, and the language is kept); edits made during a save are no longer silently discarded (a notice keeps them); saves/resets are now written serially (failures report how many fields were written); the media "×" also clears the preview version (no stale data URIs); per-reason images now participate in preset matching (image-bearing presets are recognized correctly after a refresh); the client fallback title no longer leaks `{duration}` and other placeholders; Save-As ids get a random suffix (collision-proof); duplicate preset names are rejected with a notice; the Reset button is enabled only when there are changes; the debug log auto-truncates past 512KB |
