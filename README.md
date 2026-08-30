@@ -49,6 +49,16 @@
 
 ## 功能特性
 
+<div align="center">
+
+<img src="screenshot/screenshot1.png" width="220" alt="标题编辑器">
+<img src="screenshot/ScreenShot2png.png" width="220" alt="内容编辑器">
+<img src="screenshot/ScreenShot3.png" width="220" alt="任务完成通知">
+<img src="screenshot/ScreenShot4.png" width="220" alt="AI 提问通知">
+<img src="screenshot/ScreenShot5.png" width="220" alt="任务出错通知">
+
+</div>
+
 ### 三通道提醒，一条不漏
 
 | 通道 | 形式 | 说明 |
