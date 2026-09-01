@@ -570,6 +570,7 @@ The "Notification Permissions" area of the settings panel shows the current stat
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| **0.1.18** | 2026-09-01 | **Fix question alert not firing**: on some dsh versions (0.1.2) the host projection never reaches the client, so asking a question shows no popup; the client question push now adds a harness-native "question pending" fallback trigger so it still alerts when the projection is absent; completion push / settings panel behavior unchanged |
 | **0.1.17** | 2026-08-30 | **Instant question alerts (customizable)**: alerts immediately when the AI asks; question copy supports the `{question}` placeholder and media switches; all 4 presets gain question copy in 5 languages; fallback for older hosts |
 | **0.1.16** | 2026-08-30 | **Interaction fix**: holding Backspace no longer deletes chips prematurely (chips are deleted only when no text sits between the caret and the chip) |
 | **0.1.15** | 2026-08-30 | **Interaction polish**: Content fold is expanded by default; after deleting a chip the caret lands directly on real content for continuous deletion |
