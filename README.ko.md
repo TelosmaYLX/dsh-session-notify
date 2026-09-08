@@ -41,6 +41,7 @@
 - [개발 및 디버깅](#개발-및-디버깅)
 - [자주 묻는 질문](#자주-묻는-질문)
 - [변경 로그](#변경-로그)
+- [감사](#감사)
 - [기여](#기여)
 - [관련 링크](#관련-링크)
 - [라이선스](#라이선스)
@@ -76,6 +77,12 @@
 
 - AI가 `ask_user_question`을 호출해 질문하면, 호스트가 즉시 「질문 제목 + 본문」을 전용 프로젝션(key = `session-complete-notify-question`)에 기록하고, 클라이언트가 실시간 폴링 후 팝업으로 알립니다——**다른 페이지를 보고 있어도 질문을 놓치지 않습니다**.
 - 질문 문구는 완전히 커스터마이징할 수 있습니다. 제목은 「사유별 제목 → 전역 제목 → 기본 제목」 순서로 결정되며, 본문은 `{question}` 플레이스홀더(AI의 실제 질문 주입)와 `{image}` / `{icon}` 미디어 스위치를 지원합니다.
+
+### 승인 즉시 알림
+
+- 세션이 권한 승인을 요청하는 즉시(`approval/asked`) 알리고 `approval/decided`에서 해제 — 다른 탭을 보고 있어도 승인을 놓치지 않습니다.
+- 3중 신호 폴백: harness 네이티브 `pendingInteractions`(호스트가 제공하면 가장 정확) → 호스트 승인 프로젝션(key = `session-complete-notify-approval`, 제목과 본문은 호스트가 현재 언어로 렌더링) → 세션 목록 스냅샷의 `pendingInteraction === 'approval'`.
+- 문구에는 도구 이름과 선택적 이유만 담깁니다(예: "세션이 Bash 승인을 기다리고 있습니다."). **명령 인자 등 민감한 내용은 포함하지 않습니다.** 푸시 방식과 미디어 설정도 동일하게 적용됩니다.
 
 ### 문장 하나하나까지 커스터마이징
 
@@ -239,6 +246,8 @@ dsh plugin --profile web remove @telosmaylx/dsh-session-notify
 
 **질문 알림은 독립 채널이며 위 화이트리스트에 포함되지 않습니다**: AI가 `ask_user_question`을 호출해 답변을 기다리는 동안(`tool/call` 이벤트) 즉시 알림이 뜨고, `tool/result`가 반환되면 알림이 무효화됩니다. 질문은 세션 로그에 기록되지 않고 알림만 표시됩니다.
 
+**승인도 독립 채널입니다**: 세션이 권한 승인을 요청하는 즉시(`approval/asked`) 알리고 `approval/decided`에서 해제합니다. 마찬가지로 세션 로그에는 기록하지 않고 알림만 보냅니다. 제목과 본문에는 도구 이름과 선택적 이유만 담기고 명령 인자는 포함되지 않습니다.
+
 ### 알림 본문은 어디서 오나
 
 클라이언트는 세션 목록에서 `running: true → false` 엣지를 관찰하면 알림을 보내며, 본문은 다음 우선순위로 가져옵니다(최대 6초 폴링, 400ms 간격):
@@ -248,6 +257,8 @@ dsh plugin --profile web remove @telosmaylx/dsh-session-notify
 3. **폴백** —— 「상세는 세션 내 시스템 메시지 참조」+ 작업 영역 정보(`cwd` 마지막 세그먼트).
 
 질문 알림의 본문도 호스트 프로젝션(key = `session-complete-notify-question`, 호스트가 제목과 본문을 이미 렌더링)을 우선 사용하며, 해당 프로젝션이 없는 구버전 호스트에서는 클라이언트가 제목과 `{question}` 텍스트를 직접 조합해 폴백합니다.
+
+승인 알림은 사용 가능한 순서로 3가지 신호를 조회합니다: harness 네이티브 `pendingInteractions` → 호스트 승인 프로젝션(key = `session-complete-notify-approval`) → 세션 목록 스냅샷의 `pendingInteraction` 필드. 먼저 확보되는 신호로 알리며, 같은 승인은 한 번만 푸시합니다.
 
 ### 알림 예시
 
@@ -570,6 +581,7 @@ node scripts/verify-notice.mjs <session.jsonl.zstd>
 
 | 버전 | 날짜 | 변경 내용 |
 | --- | --- | --- |
+| **0.1.20** | 2026-09-09 | **승인 즉시 알림 + 히스토리 세션 로드 수정**：권한 승인 알림 추가([PR #2](https://github.com/TelosmaYLX/dsh-session-notify/pull/2)를 [@YiHui-Liu](https://github.com/YiHui-Liu) 님이 기여 — `approval/asked` 프로젝션 + 클라이언트 3중 신호 폴백). 0.1.19 회귀 수정: 프로젝션 등록을 두 세대 계약 병기(`schema`/`view` + `stateSchema`/`wire`)로 바꿔 구형 호스트에서 히스토리 세션을 열 때 `undefined.parse`로 실패하지 않음. 클라이언트 `uiSession`을 `inject`에서 제거하고 `ctx.get` 선택 조회로 전환해 서비스 부재 시 알림·설정 패널 전체가 멈추는 문제를 방지 |
 | **0.1.19** | 2026-09-07 | **질문 팝업 수정(호스트 프로젝션 연결 끊김)**：프로젝션 단위 등록을 `stateSchema` + `wire: { viewSchema, view }` 계약으로 이전 — 구 형태(최상위 `schema`/`view`)는 신형 호스트(dsh-session-projection)에서 host-only 단위가 되어 값이 클라이언트에 전달되지 않으므로 완료·질문 프로젝션 모두 무효화. `tool/call`의 `callId`가 빈 문자열이면(일부 OpenAI 호환 프록시 라우팅) 질문 id를 `turn:step`으로 폴백하고 `tool/result`도 turn/step 대조로 해제. 아울러 `stateSchema` 누락 시 프로젝션 checkpoint 복원 경로의 잠재 크래시도 수정 |
 | **0.1.18** | 2026-09-01 | **질문 팝업 미발동 수정**：일부 dsh 버전(0.1.2)에서 호스트 프로젝션이 클라이언트에 전달되지 않아 질문해도 팝업이 뜨지 않던 문제를 수정. 클라이언트 질문 푸시에 harness 네이티브 '질문 대기' 마크 폴백을 추가하여 프로젝션 누락 시에도 알림. 완료 푸시·설정 패널 동작은 변경 없음 |
 | **0.1.17** | 2026-08-30 | **질문 즉시 알림(커스터마이징)**：AI 질문 즉시 팝업. 질문 문구는 `{question}` 플레이스홀더와 미디어 스위치 지원. 프리셋 4종에 5개 언어 질문 문구 추가. 구버전 호스트 폴백 |
@@ -590,6 +602,12 @@ node scripts/verify-notice.mjs <session.jsonl.zstd>
 | 0.1.2 | 2026-08-27 | `@telosmaylx` 스코프로 이름 변경 |
 | 0.1.1 | 2026-08-27 | GitHub / npm 설치 방법 문서화 |
 | 0.1.0 | 2026-08-26 | 초기 버전: 세션 내 시스템 메시지 + 브라우저 알림 + 공식 설정 패널 |
+
+---
+
+## 감사
+
+[@YiHui-Liu](https://github.com/YiHui-Liu) 님의 [PR #2](https://github.com/TelosmaYLX/dsh-session-notify/pull/2)에 감사드립니다 — 권한 승인 즉시 알림(`approval/asked` 프로젝션 + 클라이언트 3중 신호 폴백).
 
 ---
 

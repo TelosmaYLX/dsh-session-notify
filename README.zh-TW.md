@@ -41,6 +41,7 @@
 - [開發與除錯](#開發與除錯)
 - [常見問題](#常見問題)
 - [更新紀錄](#更新紀錄)
+- [致謝](#致謝)
 - [貢獻](#貢獻)
 - [相關連結](#相關連結)
 - [授權條款](#授權條款)
@@ -76,6 +77,12 @@
 
 - AI 呼叫 `ask_user_question` 向你提問時，宿主立刻把「提問標題 + 內文」寫入獨立投影單元（key = `session-complete-notify-question`），用戶端即時輪詢並彈窗提醒——**即使你正看著別的頁面，也不會錯過提問**。
 - 提問文案完全可自訂：標題走「按原因自訂標題 → 全域標題 → 預設標題」鏈路，內文支援 `{question}` 佔位符（注入 AI 的實際提問），媒體開關 `{image}` / `{icon}` 同樣生效。
+
+### 審批即時提醒
+
+- 會話請求權限審批時（`approval/asked`）立刻提醒，`approval/decided` 後失效——切到其他分頁也不會漏掉審批。
+- 三路信號兜底：harness 原生 `pendingInteractions`（宿主提供時最準）→ 宿主審批投影（key = `session-complete-notify-approval`，標題與內文由宿主按當前語言渲染）→ 會話列表快照的 `pendingInteraction === 'approval'`。
+- 文案只含工具名與可選原因（如「會話請求使用 Bash，請前往審批。（原因：…）」），**絕不含命令參數等敏感內容**；推送方式與媒體設定同樣生效。
 
 ### 可自訂到每一句話
 
@@ -239,6 +246,8 @@ dsh plugin --profile web remove @telosmaylx/dsh-session-notify
 
 **提問是獨立通道，不走上面的白名單**：AI 呼叫 `ask_user_question` 等待你回答時（`tool/call` 事件）立即提醒，`tool/result` 返回後提醒失效。提問不寫會話日誌，只彈通知。
 
+**審批也是獨立通道**：會話請求權限審批時（`approval/asked`）立即提醒，`approval/decided` 後失效。同樣不寫會話日誌，只彈通知；標題與內文只含工具名與可選原因，不含命令參數。
+
 ### 推送內文從哪來
 
 用戶端在會話清單觀測到 `running: true → false` 邊緣時推送，內文按以下優先級取得（最長輪詢 6 秒，400ms 間隔）：
@@ -248,6 +257,8 @@ dsh plugin --profile web remove @telosmaylx/dsh-session-notify
 3. **降級** —— 「詳情見會話內系統訊息」+ 工作區資訊（`cwd` 最後一段）。
 
 提問提醒的內文同樣優先取宿主投影（key = `session-complete-notify-question`，宿主已渲染好標題與內文），老宿主無該投影時用戶端自行拼接標題與 `{question}` 文字兜底。
+
+審批提醒按可用性三路取源：harness 原生 `pendingInteractions` → 宿主審批投影（key = `session-complete-notify-approval`）→ 會話列表快照的 `pendingInteraction` 欄位；取到即提醒，同一審批只推一次。
 
 ### 通知範例
 
@@ -570,6 +581,7 @@ node scripts/verify-notice.mjs <session.jsonl.zstd>
 
 | 版本 | 日期 | 變更 |
 | --- | --- | --- |
+| **0.1.20** | 2026-09-09 | **審批即時提醒 + 歷史會話載入修復**：新增權限審批提醒（[PR #2](https://github.com/TelosmaYLX/dsh-session-notify/pull/2) 由 [@YiHui-Liu](https://github.com/YiHui-Liu) 貢獻——`approval/asked` 投影 + 客戶端三路信號兜底）；修復 0.1.19 回歸：投影註冊契約改雙代並存（`schema`/`view` 與 `stateSchema`/`wire` 同時註冊），舊宿主開啟歷史會話不再因 `undefined.parse` 失敗；客戶端 `uiSession` 移出 `inject` 改 `ctx.get` 可選查找，避免服務缺席時通知與設定面板整體失效 |
 | **0.1.19** | 2026-09-07 | **修復提問彈窗（宿主投影斷鏈）**：投影單元註冊遷移至 `stateSchema` + `wire: { viewSchema, view }` 契約——舊形狀（頂層 `schema`/`view`）在新宿主（dsh-session-projection）下為 host-only 單元，值永不送達客戶端，完成/提問投影均失效；`tool/call` 的 `callId` 為空字串時（部分 OpenAI 相容代理路由）回退 `turn:step` 作提問 id，`tool/result` 同步按 turn/step 匹配清除；順帶修復 `stateSchema` 缺失在投影 checkpoint restore 路徑的潛在崩潰 |
 | **0.1.18** | 2026-09-01 | **修復提問彈窗失效**：部分 dsh 版本（0.1.2）宿主投影未送達客戶端導致提問不彈窗；客戶端提問推送新增 harness 原生「待提問」標記兜底觸發，宿主投影缺失時仍提醒；完成推送/設定面板行為不變 |
 | **0.1.17** | 2026-08-30 | **提問即時提醒（可自訂）**：AI 提問立即彈窗；提問文案支援 `{question}` 佔位符與媒體開關；4 套預設補齊 5 語言提問文案；舊宿主自動兜底 |
@@ -590,6 +602,12 @@ node scripts/verify-notice.mjs <session.jsonl.zstd>
 | 0.1.2 | 2026-08-27 | 套件更名至 `@telosmaylx` scope |
 | 0.1.1 | 2026-08-27 | GitHub、npm 安裝方式文件化 |
 | 0.1.0 | 2026-08-26 | 初始版本：會話內系統訊息 + 瀏覽器推送 + 官方設定面板 |
+
+---
+
+## 致謝
+
+感謝 [@YiHui-Liu](https://github.com/YiHui-Liu) 的 [PR #2](https://github.com/TelosmaYLX/dsh-session-notify/pull/2)——權限審批即時提醒（`approval/asked` 投影 + 客戶端三路信號兜底）。
 
 ---
 

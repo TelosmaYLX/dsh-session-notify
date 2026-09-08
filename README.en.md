@@ -41,6 +41,7 @@ At the end of every conversation turn, writes "completed / errored / blocked / h
 - [Development & Debugging](#development--debugging)
 - [FAQ](#faq)
 - [Changelog](#changelog)
+- [Acknowledgements](#acknowledgements)
 - [Contributing](#contributing)
 - [Related Links](#related-links)
 - [License](#license)
@@ -76,6 +77,12 @@ At the end of every conversation turn, writes "completed / errored / blocked / h
 
 - When the AI calls `ask_user_question` to ask you something, the host immediately writes the "question title + body" into a dedicated projection unit (key = `session-complete-notify-question`), and the client polls it in real time and pops an alert — **even if you are looking at another page, you won't miss the question**.
 - The question copy is fully customizable: the title follows the "per-reason title → global title → default title" chain, the body supports the `{question}` placeholder (injected with the AI's actual question), and the `{image}` / `{icon}` media switches work as well.
+
+### Instant Approval Alerts
+
+- Alerts immediately when a session requests a permission approval (`approval/asked`) and clears on `approval/decided` — you won't miss it while looking at another tab.
+- Three fallback signals: the harness-native `pendingInteractions` (most accurate when the host provides it) → the host approval projection (key = `session-complete-notify-approval`, title and body rendered by the host in the current language) → the session list snapshot's `pendingInteraction === 'approval'`.
+- The copy carries only the tool name and an optional reason (e.g. "The session is waiting for approval of Bash."), **never command arguments or other sensitive content**; push mode and media settings apply as well.
 
 ### Customizable Down to Every Sentence
 
@@ -239,6 +246,8 @@ When each conversation turn ends (`turn/end`), the end reason is checked; hittin
 
 **Question alerts are a separate channel and do NOT go through the whitelist above**: when the AI calls `ask_user_question` and waits for your answer (a `tool/call` event), the alert fires immediately, and it becomes invalid once the `tool/result` returns. Questions are not written to the session log — they only pop a notification.
 
+**Approvals are another independent channel**: the alert fires immediately when a session requests a permission approval (`approval/asked`) and clears on `approval/decided`. It writes no session-log entry either — just a notification; the title and body carry only the tool name and an optional reason, never command arguments.
+
 ### Where Does the Push Body Come From
 
 When the client observes a `running: true → false` edge in the session list, it pushes; the body is fetched with the following priority (polls for up to 6 seconds at 400ms intervals):
@@ -248,6 +257,8 @@ When the client observes a `running: true → false` edge in the session list, i
 3. **Fallback** — "See the in-session system message for details" + workspace info (last segment of `cwd`).
 
 Question alerts take their body from the host projection as well (key = `session-complete-notify-question`, with the title and body already rendered by the host); on older hosts without that projection, the client assembles the title and `{question}` text itself as a fallback.
+
+Approval alerts resolve three signal sources in order of availability: the harness-native `pendingInteractions` → the host approval projection (key = `session-complete-notify-approval`) → the session list snapshot's `pendingInteraction` field; whichever arrives first alerts, and each approval pushes only once.
 
 ### Notification Examples
 
@@ -570,6 +581,7 @@ The "Notification Permissions" area of the settings panel shows the current stat
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| **0.1.20** | 2026-09-09 | **Instant approval alerts + historical-session load fix**: adds permission-approval alerts ([PR #2](https://github.com/TelosmaYLX/dsh-session-notify/pull/2) by [@YiHui-Liu](https://github.com/YiHui-Liu) — an `approval/asked` projection plus a three-signal client fallback); fixes the 0.1.19 regression where opening a historical session failed with `undefined.parse` — projection registration now carries both contract generations (`schema`/`view` and `stateSchema`/`wire`); the client's `uiSession` moves out of `inject` into an optional `ctx.get` lookup so a missing service can no longer park the whole client half (notifications and settings panel). |
 | **0.1.19** | 2026-09-07 | **Fix question popup (broken host projection link)**: projection unit registration migrated to the `stateSchema` + `wire: { viewSchema, view }` contract — the old shape (top-level `schema`/`view`) is a host-only unit under the new host (dsh-session-projection), so its values never reach the client and both the completion and question projections stop working; when `tool/call` carries an empty `callId` (some OpenAI-compatible proxy routes), the question id falls back to `turn:step` and `tool/result` now clears via the same turn/step match; also fixes a latent crash in the projection checkpoint restore path when `stateSchema` is missing |
 | **0.1.18** | 2026-09-01 | **Fix question alert not firing**: on some dsh versions (0.1.2) the host projection never reaches the client, so asking a question shows no popup; the client question push now adds a harness-native "question pending" fallback trigger so it still alerts when the projection is absent; completion push / settings panel behavior unchanged |
 | **0.1.17** | 2026-08-30 | **Instant question alerts (customizable)**: alerts immediately when the AI asks; question copy supports the `{question}` placeholder and media switches; all 4 presets gain question copy in 5 languages; fallback for older hosts |
@@ -590,6 +602,12 @@ The "Notification Permissions" area of the settings panel shows the current stat
 | 0.1.2 | 2026-08-27 | Renamed to `@telosmaylx` scope |
 | 0.1.1 | 2026-08-27 | Documented GitHub & npm install methods |
 | 0.1.0 | 2026-08-26 | Initial release: in-session system message + browser push + official settings panel |
+
+---
+
+## Acknowledgements
+
+Thanks to [@YiHui-Liu](https://github.com/YiHui-Liu) for [PR #2](https://github.com/TelosmaYLX/dsh-session-notify/pull/2) — instant permission-approval alerts (the `approval/asked` projection plus the client's three-signal fallback).
 
 ---
 
