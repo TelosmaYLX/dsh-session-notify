@@ -2,3 +2,10 @@ node_modules/
 *.tgz
 *.log
 presets-edit.csv
+
+# 本地私有守卫（含内网域名/私密邮箱模式，禁止入库与推送）
+.githooks/
+
+# 本地私密工件
+*.mailmap
+*.bundle
