@@ -9,3 +9,6 @@ presets-edit.csv
 # 本地私密工件
 *.mailmap
 *.bundle
+
+# 本地文档（含内网发版流程，仅本地保留，不入库/不推送）
+docs/
