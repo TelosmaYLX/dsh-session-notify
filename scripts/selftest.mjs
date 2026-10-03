@@ -31,6 +31,21 @@ function check(name, cond, extra) {
 }
 function group(title) { console.log(`\n[${title}]`) }
 
+// 宿主 SettingsForms.volatileForm 的判定：递归收集 meta.volatile 的叶子；一个都没有
+// → 返回 undefined → 宿主 describe() 跳过该条目 → 官方设置页不出现、客户端表单恒
+// unavailable。这里复刻一份，用于对本插件的 Config 做契约断言（与宿主同一判据）。
+function volatileLeaves(node, path = [], out = []) {
+  // schemastery 的 Schema 实例是**可调用对象**（typeof === 'function'），两种都要放行。
+  if (node === null || (typeof node !== 'object' && typeof node !== 'function')) return out
+  if (node.meta?.volatile) { out.push({ path: path.join('.'), node }); return out }
+  if (node.type === 'object') for (const [k, child] of Object.entries(node.dict || {})) volatileLeaves(child, [...path, k], out)
+  return out
+}
+// lib/index.js 在模块顶层构造 Config（要经 HUB_REQUIRE 解析宿主 schemastery），
+// 取不到时置 null，相关断言按不通过处理而不是让自测整体崩掉。
+let hostModule = null
+try { hostModule = await import(pathToFileURL(join(root, 'lib', 'index.js')).href) } catch { hostModule = null }
+
 // ---------------------------------------------------------------- 1. core.js
 group('1 core.js：{audio} 剥除')
 const core = await import(pathToFileURL(join(root, 'lib', 'core.js')).href)
@@ -49,9 +64,51 @@ group('2 index.js：设置 schema / sanitize')
 check('DEFAULT_SETTINGS 含 audios（6 键全空）', /audios: \{ completed: '', error: '', aborted: '', blocked: '', 'max-tokens': '', question: '' \}/.test(hostSrc))
 check('DEFAULT_SETTINGS 含 volume 0.6', /volume: 0\.6,/.test(hostSrc))
 check('DEFAULT_SETTINGS 含 maxDuration 0（不限制，可自行设置）', /maxDuration: 0,/.test(hostSrc))
-check('schema 声明 audios 对象', /audios: Schema\.object\(\{/.test(hostSrc))
-check('schema 声明 volume 范围 [0,1]', /volume: Schema\.number\(\)\.min\(0\)\.max\(1\)\.default\(0\.6\)/.test(hostSrc))
-check('schema 声明 maxDuration（>=0，默认 0 = 不限制）', /maxDuration: Schema\.number\(\)\.min\(0\)\.default\(0\)/.test(hostSrc))
+check('schema 声明 audios 对象', /audios: perReason\(/.test(hostSrc))
+check('schema 的每个叶子都标 volatile（官方设置页只投影 volatile 字段）', (() => {
+  const host = hostModule
+  if (host === null) return false
+  const leaves = volatileLeaves(host.Config)
+  return leaves.length > 0 && leaves.every((l) => l.node.meta.volatile === true)
+})())
+check('宿主 volatileForm 判定不会跳过本条目', (() => {
+  const host = hostModule
+  return host !== null && volatileLeaves(host.Config).length > 0
+})())
+check('schema 投影出 21 个顶层字段', (() => {
+  const host = hostModule
+  return host !== null && Object.keys(host.Config.dict).length === 21
+})())
+check('schema 投影含 audios 六键', (() => {
+  const host = hostModule
+  if (host === null) return false
+  const keys = Object.keys(host.Config.dict.audios.dict)
+  return ['completed', 'error', 'aborted', 'blocked', 'max-tokens', 'question'].every((k) => keys.includes(k))
+})())
+check('volume 是数字、默认 0.6、范围 [0,1] 生效', (() => {
+  const host = hostModule
+  if (host === null) return false
+  const v = host.Config.dict.volume
+  if (v.type !== 'number' || v.meta.default !== 0.6) return false
+  const bad = host.Config['~standard'].validate({ volume: 5 })
+  const good = host.Config['~standard'].validate({ volume: 0.3 })
+  return Boolean(bad.issues) && !good.issues
+})())
+check('maxDuration 是数字、默认 0（不限制）、负数被拒', (() => {
+  const host = hostModule
+  if (host === null) return false
+  const v = host.Config.dict.maxDuration
+  if (v.type !== 'number' || v.meta.default !== 0) return false
+  const bad = host.Config['~standard'].validate({ maxDuration: -1 })
+  const good = host.Config['~standard'].validate({ maxDuration: 30 })
+  return Boolean(bad.issues) && !good.issues
+})())
+check('language 仍是受限 union（非法值被拒）', (() => {
+  const host = hostModule
+  if (host === null) return false
+  return Boolean(host.Config['~standard'].validate({ language: 'nope' }).issues) &&
+    !host.Config['~standard'].validate({ language: 'zh-tw' }).issues
+})())
 check('sanitize 规整 audios', /const audios = \{ \.\.\.DEFAULT_SETTINGS\.audios \}/.test(hostSrc))
 check('sanitize 规整 volume 越界回落', /volume >= 0 && src\.volume <= 1\) \? src\.volume : DEFAULT_SETTINGS\.volume/.test(hostSrc))
 check('sanitize 规整 maxDuration 负数/非数回落', /src\.maxDuration >= 0\) \? src\.maxDuration : DEFAULT_SETTINGS\.maxDuration/.test(hostSrc))
