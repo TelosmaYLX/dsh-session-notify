@@ -66,7 +66,7 @@ console.log(`帧数: ${frames}，行数: ${lines.length}`)
 
 const notices = lines
   .map((l, i) => ({ l, i }))
-  .filter(({ l }) => l.includes('"type":"user/message"') && l.includes('"kind":"plugin"'))
+  .filter(({ l }) => l.includes('"type":"user/message"') && l.includes('"kind":"plugin'))
 console.log(`\n===== plugin-source 系统消息（${notices.length} 条）=====`)
 for (const n of notices) {
   try {
@@ -102,7 +102,7 @@ for (const l of lines.slice(-24)) {
     const row = JSON.parse(l)
     const data = row.data ?? {}
     const src = data.message?.source
-    const extra = src ? ` [source=${src.kind}${src.kind === 'plugin' ? `:${src.plugin}` : ''}]` : ''
+    const extra = src ? ` [source=${src.kind.startsWith('plugin:') ? src.kind : `${src.kind}:${src.plugin}`}]` : ''
     console.log(`seq ${row.seq}  ${row.type}${extra}`)
   } catch {
     console.log(`??  ${l.slice(0, 120)}`)

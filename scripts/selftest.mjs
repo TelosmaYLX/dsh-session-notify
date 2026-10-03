@@ -86,6 +86,24 @@ check('templates 缺失时安全（全 false）', (() => { const t = mediaTagsOf
 check('宿主把 tags 写进 notice.source', /mediaTags: mediaTags \?\? \{\}/.test(hostSrc))
 check('投影 schema 含 tags、stateVersion=3', /tags: z\.record\(z\.boolean\(\)\)\.default\(\{\}\)/.test(hostSrc) && /stateVersion: 3,/.test(hostSrc))
 
+// ------------------------------------------- 3b. v4 生产者 source 契约
+group('3b index.js：v4 source.kind 契约（issue #4）')
+{
+  // 从源码里抠出投影 apply 的真实判定表达式求值，避免只做文本匹配而漏掉语义回归。
+  const condMatch = hostSrc.match(/if \((src\.kind[\s\S]*?)\) return state/)
+  if (!condMatch) throw new Error('未找到投影 source 判定表达式')
+  const accepts = new Function('src', 'PLUGIN_ID', `return !(${condMatch[1]})`)
+  const ID = 'dsh-session-notify'
+  check('写入端写生产者自有 kind（不再是老式 "plugin" 包装）', /kind: `plugin:\$\{PLUGIN_ID\}`/.test(hostSrc))
+  check('写入端保留 plugin 字段（UI 署名）', /kind: `plugin:\$\{PLUGIN_ID\}`,\s*\n\s*plugin: PLUGIN_ID,/.test(hostSrc))
+  check('投影认新式 kind（带 plugin 字段）', accepts({ kind: `plugin:${ID}`, plugin: ID }, ID) === true)
+  check('投影认迁移后形状（无 plugin 字段）', accepts({ kind: `plugin:${ID}`, form: 'notice' }, ID) === true)
+  check('投影仍认 V3 老式形状（宿主未迁移时）', accepts({ kind: 'plugin', plugin: ID }, ID) === true)
+  check('投影拒 v4 拒收的老式 "plugin" 裸包装（无 plugin 字段）', accepts({ kind: 'plugin' }, ID) === false)
+  check('投影拒别的插件', accepts({ kind: 'plugin:dsh-web-tools', plugin: 'dsh-web-tools' }, ID) === false)
+  check('投影拒非本插件的老式来源', accepts({ kind: 'plugin', plugin: 'dsh-layered-memory' }, ID) === false)
+}
+
 // --------------------------------------------------- 4. client.js 纯逻辑
 group('4 client.js：提示音纯逻辑')
 function grab(startMarker, endMarker) {
