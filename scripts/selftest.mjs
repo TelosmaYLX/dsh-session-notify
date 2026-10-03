@@ -104,6 +104,20 @@ group('3b index.js：v4 source.kind 契约（issue #4）')
   check('投影拒非本插件的老式来源', accepts({ kind: 'plugin', plugin: 'dsh-layered-memory' }, ID) === false)
 }
 
+// ------------------------------------- 3c. 客户端设置服务名契约（0.2.0）
+group('3c client.js：设置服务名双代兼容')
+{
+  // settingsScope 在 0.1.7+ 已弃用（正式名 webUiSettings），且不能作为 inject 硬依赖：
+  // 服务缺席会让整个客户端 fiber 永久 park，通知与设置面板一起消失。
+  const injectMatch = clientSrc.match(/exports\.inject = (\[[^\]]*\])/)
+  check('inject 声明存在', injectMatch !== null)
+  const declared = injectMatch ? JSON.parse(injectMatch[1].replace(/'/g, '"')) : []
+  check('inject 不含 settingsScope（否则 0.2.0 永久 pending）', !declared.includes('settingsScope'))
+  check('inject 仍保留 sessions / slots 硬依赖', declared.includes('sessions') && declared.includes('slots'))
+  check('settingsBinder 优先取 webUiSettings', /ctx\.get\('webUiSettings'\) \?\? ctx\.get\('settingsScope'\)/.test(clientSrc))
+  check('无残留的 ctx.settingsScope 直接访问', !/ctx\.settingsScope\b/.test(clientSrc))
+}
+
 // --------------------------------------------------- 4. client.js 纯逻辑
 group('4 client.js：提示音纯逻辑')
 function grab(startMarker, endMarker) {
@@ -300,10 +314,10 @@ function buildHarness(settingsValue, useWebAudio) {
     }),
   }
   const ctx = {
-    settingsScope,
+    webUiSettings: settingsScope,
     slots: { inject() {}, register() {} },
     sessions: { list: { getSnapshot: () => ({ byId: {} }), subscribe: () => () => {}, binding: () => null } },
-    get: () => undefined, on: () => () => {}, effect: (fn) => { void fn },
+    get: (k) => (k === 'webUiSettings' || k === 'settingsScope' ? settingsScope : undefined), on: () => () => {}, effect: (fn) => { void fn },
   }
   const factoryStart = clientSrc.indexOf('factory: (require) => {') + 'factory: (require) => {'.length
   const factoryBody = clientSrc.slice(factoryStart, clientSrc.lastIndexOf('\n    return module.exports'))
@@ -632,7 +646,7 @@ function runCompletion({ audio, template, volume, maxDuration, pushMode, tags })
   h.mod.apply({
     sessions: { list: { getSnapshot: () => snapshot, subscribe: (fn) => { listener = fn; return () => {} }, binding: () => null } },
     settingsScope: { bind: () => ({ getSnapshot: () => ({ status: 'ready', value }), subscribe: () => () => {}, get: () => value, set: () => Promise.resolve() }) },
-    slots: { inject() {}, register() {} }, get: () => undefined, on: () => () => {}, effect: (fn) => { void fn },
+    slots: { inject() {}, register() {} }, get: (k) => (k === "webUiSettings" || k === "settingsScope" ? { bind: () => ({ getSnapshot: () => ({ status: "ready", value }), subscribe: () => () => {}, get: () => value, set: () => Promise.resolve() }) } : undefined), on: () => () => {}, effect: (fn) => { void fn },
   })
   listener() // 基线
   session.running = true; listener()
@@ -672,7 +686,7 @@ const TAG_YES = { image: false, icon: false, audio: true }
   h2.mod.apply({
     sessions: { list: { getSnapshot: () => snapshot, subscribe: (fn) => { listener = fn; return () => {} }, binding: () => null } },
     settingsScope: { bind: () => ({ getSnapshot: () => ({ status: 'ready', value }), subscribe: () => () => {}, get: () => value, set: () => Promise.resolve() }) },
-    slots: { inject() {}, register() {} }, get: () => undefined, on: () => () => {}, effect: (fn) => { void fn },
+    slots: { inject() {}, register() {} }, get: (k) => (k === "webUiSettings" || k === "settingsScope" ? { bind: () => ({ getSnapshot: () => ({ status: "ready", value }), subscribe: () => () => {}, get: () => value, set: () => Promise.resolve() }) } : undefined), on: () => () => {}, effect: (fn) => { void fn },
   })
   listener()
   for (let i = 0; i < 2; i++) { session.running = true; listener(); session.running = false; listener() }
@@ -695,7 +709,7 @@ group('7b 试听（播放/暂停图标）与最长播放时长淡出')
     h.mod.apply({
       sessions: { list: { getSnapshot: () => ({ byId: {} }), subscribe: () => () => {}, binding: () => null } },
       settingsScope: { bind: () => ({ getSnapshot: () => ({ status: 'ready', value }), subscribe: () => () => {}, get: () => value, set: () => Promise.resolve() }) },
-      slots: { inject() {}, register() {} }, get: () => undefined, on: () => () => {}, effect: (fn) => { void fn },
+      slots: { inject() {}, register() {} }, get: (k) => (k === "webUiSettings" || k === "settingsScope" ? { bind: () => ({ getSnapshot: () => ({ status: "ready", value }), subscribe: () => () => {}, get: () => value, set: () => Promise.resolve() }) } : undefined), on: () => () => {}, effect: (fn) => { void fn },
     })
     return h
   }
