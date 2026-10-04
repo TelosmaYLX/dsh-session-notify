@@ -397,7 +397,7 @@ for (const [name, matcher] of wire) check(name, typeof matcher === 'boolean' ? m
 
 // ------------------------------------------------------------ 6. 渲染冒烟
 group('6 设置卡片渲染冒烟')
-function buildHarness(settingsValue, useWebAudio) {
+function buildHarness(settingsValue, useWebAudio, docOverride) {
   const React = makeReact()
   let Card = null
   const created = []
@@ -462,7 +462,7 @@ function buildHarness(settingsValue, useWebAudio) {
     Notification: undefined, AudioContext: useWebAudio ? FakeCtx : undefined, webkitAudioContext: undefined,
     crypto: globalThis.crypto, setTimeout, clearTimeout,
   }
-  const doc = {
+  const doc = docOverride || {
     querySelector: () => null,
     createElement: (tag) => {
       const el = {
@@ -477,11 +477,18 @@ function buildHarness(settingsValue, useWebAudio) {
   }
   // react 可用（卡片需要），其余模块不可用（走 fallback 分支）
   const mod = loader(win, (id) => { if (id === 'react') return React; throw new Error('no module: ' + id) }, { log() {}, warn() {}, error() {} }, doc, (fn) => fn(), FakeAudio)
-  ctx.slots.register = (_def, component) => { Card = component }
+  // 按槽位名分别捕获：设置面板有 4 个槽位注册的是同一个组件（取任意一个当 Card），
+  // 页脚铃铛是另一个组件。此前用「最后一次注册」当 Card，加了铃铛后会把 Card 覆盖掉。
+  const registered = {}
+  ctx.slots.register = (def, component) => {
+    const name = def && def.name
+    registered[name] = component
+    if (Card === null && name !== 'sidebar.footer.action') Card = component
+  }
   // slots.inject(name, generator) 语义：跑生成器（首次 next 拿到 register 调用，第二次 next 完成注册）
   ctx.slots.inject = (_name, gen) => { const it = gen(); it.next(); it.next() }
   mod.apply(ctx)
-  return { Card, React, created, win, previews, writes, unsets }
+  return { Card, Bell: registered['sidebar.footer.action'], registered, React, created, win, previews, writes, unsets }
 }
 function makeReact() {
   const store = { states: [], idx: 0 }
@@ -624,6 +631,45 @@ const baseValue = {
   }
 }
 
+// ---------------------------------------------- 6a2. 页脚铃铛入口（自绘浮层）
+group('6a2 页脚铃铛（sidebar.footer.action + 自绘浮层）')
+{
+  const h = buildHarness(JSON.parse(JSON.stringify(baseValue)), true)
+  check('页脚铃铛已注册到 sidebar.footer.action', typeof h.Bell === 'function' && h.registered['sidebar.footer.action'] === h.Bell)
+  check('设置面板 4 个槽位注册的仍是同一个卡片组件', h.registered['settings.plugins.tab'] === h.Card &&
+    h.registered['settings.plugin.item'] === h.Card && h.registered['plugins.bundle.config'] === h.Card &&
+    h.registered['plugins.row.config'] === h.Card)
+  let nodes = flatten(h.Bell({ wide: true }))
+  const btn = nodes.find((n) => n.type === 'button')
+  check('铃铛是按钮且带无障碍名', !!btn && typeof btn.props['aria-label'] === 'string' && btn.props['aria-label'].length > 0, btn && String(btn.props['aria-label']))
+  check('铃铛画的是铃铛（钟体 + 摆锤两条路径）', nodes.filter((n) => n.type === 'path').length === 2)
+  check('未点开时 aria-expanded=false 且不渲染浮层', !!btn && btn.props['aria-expanded'] === false && !nodes.some((n) => n.props.role === 'dialog'))
+
+  if (btn) btn.props.onClick({})
+  h.React.__store.idx = 0
+  nodes = flatten(h.Bell({ wide: true }))
+  const dlg = nodes.find((n) => n.props.role === 'dialog')
+  check('点铃铛 → 弹出 role=dialog / aria-modal 的自绘浮层', !!dlg && dlg.props['aria-modal'] === 'true')
+  check('浮层带无障碍标题', !!(dlg && typeof dlg.props['aria-label'] === 'string' && dlg.props['aria-label'].length > 0))
+  check('浮层里是完整的设置面板（渲染出音量滑块）', nodes.some((n) => n.props.type === 'range'))
+  check('浮层有独立关闭按钮', nodes.some((n) => n.type === 'button' && n.props['aria-label'] === '关闭'))
+
+  const opened = nodes.find((n) => n.type === 'button' && 'aria-expanded' in n.props)
+  if (opened) opened.props.onClick({})
+  h.React.__store.idx = 0
+  nodes = flatten(h.Bell({ wide: true }))
+  check('再点铃铛 → 浮层关闭', !nodes.some((n) => n.props.role === 'dialog'))
+}
+{
+  // popover 模式：标题交给浮层，卡片本身不画折叠头、恒展开
+  const h = buildHarness(JSON.parse(JSON.stringify(baseValue)), true)
+  const nodes = flatten(h.Card({ popover: true }))
+  check('popover 模式不渲染折叠头（避免两层标题）', !nodes.some((n) => n.type === 'button' && 'aria-expanded' in n.props))
+  check('popover 模式恒展开（直接渲染出音量滑块）', nodes.some((n) => n.props.type === 'range'))
+  // footArea 是 flex-wrap:wrap，官方 settingsArea 自带 order:3 —— 铃铛必须排在它之后
+  // 才会落在「设置」右侧；order 缺失或过小都会被挤到用量面板上面那一行。
+  check('铃铛用 flex order 排在官方「设置」区之后（落在其右侧）', /order: 4,/.test(clientSrc), '未找到 order: 4')
+}
 // ---------------------------------------------- 6b. 音量设置真正生效（试听即按当前音量）
 group('6b 音量设置生效（试听按当前音量）')
 {
