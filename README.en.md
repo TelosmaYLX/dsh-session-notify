@@ -118,10 +118,19 @@ At the end of every conversation turn, writes "completed / errored / blocked / h
 
 | Dependency | Requirement |
 | --- | --- |
-| DSH (DeepSeek Harness) | Web profile deployment. The official base bundle includes `@deepseek-ai/dsh-settings` (settings namespace) and session projections by default; no extra configuration needed |
+| DSH (DeepSeek Harness) | **0.1.x and 0.2.0-rc.2+** (verified on 0.2.0-rc.2). Web profile deployment; the official base bundle ships `@deepseek-ai/dsh-settings` and session projections, and the plugin adapts to both settings contracts automatically |
 | cordis | `>=4.0.0-rc <5` (peer dependency, provided by the host) |
 | Node.js | `>=22` (host side) |
 | Browser | System notifications when Web Notification is supported; toast falls back when unsupported, permission denied or silently suppressed |
+
+The two host generations use **different settings contracts; the plugin adapts automatically, with no configuration**:
+
+| Environment | Settings namespace | Settings panel entry |
+| --- | --- | --- |
+| dsh 0.1.x | Chosen by the plugin: `session-complete-notify` (`ctx.settings.register`) | Host `settingsScope` → `settings.plugin.item` slot |
+| dsh 0.2.0-rc.2+ | Profile entry id: `dsh-session-notify` | Host `configForms` → `plugins.bundle.config` / `plugins.row.config` / `settings.plugins.tab` slots |
+
+> The 0.1.x code path is unchanged, but the latest round of changes was only regression-tested on 0.2.0-rc.2. On older hosts with `schemastery` < 3.18.3 the plugin skips `volatile()` (0.1.x does not need it).
 
 ---
 
@@ -597,6 +606,7 @@ The "Notification Permissions" area of the settings panel shows the current stat
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| **0.1.23** | 2026-10-04 | **dsh 0.2.0 settings-contract support + global alert sound + sidebar bell**: fixed the settings panel disappearing entirely on 0.2.0 (schema now marks `.volatile()`, slots moved to `plugins.bundle.config` / `plugins.row.config` / `settings.plugins.tab`, namespace is the profile entry id) while keeping 0.1.x working (probed `volatile()` fallback); the Audio section gained a **global alert sound** (played when the content specifies none for that state; priority: that state's sound > global > silent); the notification hero image and icon moved into an **"Image" collapsible section**; a **bell entry** now sits to the right of Settings in the sidebar and opens a self-drawn overlay with the same settings panel (closes on Esc / mask / ×) |
 | **0.1.22** | 2026-09-21 | **Custom alert sounds**: end-reason templates can insert the `{audio}` tag and upload a local audio file (**stored as-is**, no compression, no trimming); a new "Audio" fold (**expanded by default**) unifies the **volume** setting (**the "Volume" label in front of the slider**, 0–100%, default 60%, Test ↔ Stop toggle, **the preview plays at the current volume**) and the **duration** setting (label → slider → number box → seconds; slider **0–15 s / step 0.1**; **0 = no limit**, and if playback is unfinished at the limit → **0.5 s volume fade-out** then stop); the tag carries its own **play / pause icon** (click to preview, click again to stop) and a **delete ×** (only clears that reason's audio data, the body text stays intact); the same rules as `{image}`/`{icon}` — stripped when the body/title is rendered, never written into the session log, only one per state; **saving writes only the fields that actually changed** (previously a fixed 18 full writes, amplified 18× with large audio; now typically 2–3), with the buttons disabled while saving |
 | **0.1.21** | 2026-09-14 | **Push channels split by unfocused / focused state** ([PR #3](https://github.com/TelosmaYLX/dsh-session-notify/pull/3) by [@YiHui-Liu](https://github.com/YiHui-Liu)): adds two independent dropdowns, "Unfocused" and "Focused", each offering `Off` / `System + in-page` / `System only` / `In-page only`; removes the old single "Push mode" setting — when the new keys are unset both routes fall back to the legacy `pushMode` value (existing configurations behave unchanged); setting a route to "Off" makes that state fully silent (questions and approvals skip deduplication, so the same event still alerts once the page moves to the other state; completion is an edge event, so a silent state does not replay it); the "Send" test notification prefers the "Focused" route, falls back to the "Unfocused" route when that is "Off" |
 | **0.1.20** | 2026-09-09 | **Instant approval alerts + historical-session load fix**: adds permission-approval alerts ([PR #2](https://github.com/TelosmaYLX/dsh-session-notify/pull/2) by [@YiHui-Liu](https://github.com/YiHui-Liu) — an `approval/asked` projection plus a three-signal client fallback); fixes the 0.1.19 regression where opening a historical session failed with `undefined.parse` — projection registration now carries both contract generations (`schema`/`view` and `stateSchema`/`wire`); the client's `uiSession` moves out of `inject` into an optional `ctx.get` lookup so a missing service can no longer park the whole client half (notifications and settings panel). |

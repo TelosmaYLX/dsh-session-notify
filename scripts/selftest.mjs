@@ -1015,6 +1015,9 @@ group('8 README × 5 一致性 + 版本一致性')
     check(`${f}：更新日志首行 = package.json 版本 ${pkg.version}`, !!firstVersionRow && firstVersionRow.includes(`**${pkg.version}**`), firstVersionRow ? firstVersionRow.slice(0, 48) : 'no version row')
     check(`${f}：提及 audios / volume 设置键`, s.includes('audios') && s.includes('volume'))
     check(`${f}：提及 maxDuration 设置键`, s.includes('maxDuration'))
+    // 兼容性说明必须两种语言都写到：0.1.x 走 settingsScope、0.2.0 走 configForms
+    check(`${f}：写明两代宿主的设置契约（settingsScope / configForms）`,
+      s.includes('settingsScope') && s.includes('configForms'))
   }
   check('package.json 语法与 main 指向 lib/index.js', pkg.main === './lib/index.js')
 }

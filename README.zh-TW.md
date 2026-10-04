@@ -118,10 +118,19 @@
 
 | 依賴 | 需求 |
 | --- | --- |
-| DSH（DeepSeek Harness） | Web profile 部署。官方 base bundle 預設包含 `@deepseek-ai/dsh-settings`（設定命名空間）與會話投影，無需額外設定 |
+| DSH（DeepSeek Harness） | **0.1.x 與 0.2.0-rc.2 起**（目前實測 0.2.0-rc.2）。Web profile 部署；官方 base bundle 預設包含 `@deepseek-ai/dsh-settings` 與會話投影，兩代設定契約由外掛自動適配，無需設定 |
 | cordis | `>=4.0.0-rc <5`（peer dependency，由宿主提供） |
 | Node.js | `>=22`（宿主側） |
 | 瀏覽器 | 支援 Web Notification 則有系統通知；不支援、權限拒絕或被靜默時由 toast 保底 |
+
+兩代宿主的**設定契約不同，外掛自動適配，無需任何設定**：
+
+| 環境 | 設定命名空間 | 設定面板入口 |
+| --- | --- | --- |
+| dsh 0.1.x | 外掛自選：`session-complete-notify`（`ctx.settings.register`） | 宿主 `settingsScope` → `settings.plugin.item` 槽位 |
+| dsh 0.2.0-rc.2 起 | profile entry id：`dsh-session-notify` | 宿主 `configForms` → `plugins.bundle.config` / `plugins.row.config` / `settings.plugins.tab` 槽位 |
+
+> 0.1.x 的程式路徑保持不變，但最近一輪改動只在 0.2.0-rc.2 上做過端到端回歸；舊宿主上 `schemastery` < 3.18.3 時自動跳過 `volatile()`（0.1.x 不需要它）。
 
 ---
 
@@ -597,6 +606,7 @@ node scripts/verify-notice.mjs <session.jsonl.zstd>
 
 | 版本 | 日期 | 變更 |
 | --- | --- | --- |
+| **0.1.23** | 2026-10-04 | **適配 dsh 0.2.0 設定契約 + 全域提示音 + 側邊欄鈴鐺**：修好 0.2.0 下設定面板整體消失（schema 補 `.volatile()`、槽位改用 `plugins.bundle.config` / `plugins.row.config` / `settings.plugins.tab`、命名空間改用 profile entry id），同時保住 0.1.x 相容（`volatile()` 探測降級）；「音訊」區新增**全域提示音**（內容未為該狀態指定音訊時保底，優先順序：該狀態音訊 > 全域 > 靜音）；通知大圖與圖示收進**「圖片」摺疊區**；側邊欄「設定」右側新增**鈴鐺入口**，點開自繪浮層（同一份設定面板，Esc / 遮罩 / × 關閉） |
 | **0.1.22** | 2026-09-21 | **自訂提示音**：結束原因範本可插入 `{audio}` 標籤並上傳本機音訊（**原樣保存**，不壓縮、不截斷）；新增「音訊」摺疊區（**預設展開**）統一設定**音量**（「音量」在滑桿前，0~100%、預設 60%、試聽 ↔ 停止開關，**試聽按當前音量**）與**時長**（標籤 → 滑桿 → 數值框 → 秒，滑桿 **0~15 秒 / 步長 0.1**；**0 = 不限制**，到點未播完 → **0.5 秒音量淡出**後停止）；標籤自帶**播放 / 暫停圖示**（點即試聽、再點即停）與**刪除 ×**（只清該原因音訊資料，正文原樣保留）；與 `{image}`/`{icon}` 同口徑——正文/標題渲染時剝除、不進會話日誌、同狀態唯一；**儲存只寫真正變更的欄位**（此前固定 18 次全量寫入，大音訊下被放大 18 倍；現典型 2~3 次），儲存期間按鈕停用 |
 | **0.1.21** | 2026-09-14 | **推送通道按失焦/聚焦分流**（[PR #3](https://github.com/TelosmaYLX/dsh-session-notify/pull/3) 由 [@YiHui-Liu](https://github.com/YiHui-Liu) 貢獻）：新增「失焦時」「聚焦時」兩個獨立下拉，各自可選 `不通知` / `雙通道` / `僅系統通知` / `僅頁內提示`；移除舊的單一「推送方式」設定項，未設定新項時兩路自動沿用舊 `pushMode` 值（舊設定行為不變）；某時機設為「不通知」時該時機完全靜默（提問與審批不記去重，分頁切到另一時機後同一次事件仍會提醒；完成屬邊沿事件，靜默即不補發）；「傳送」測試通知優先走聚焦那一路，其為「不通知」時改用失焦那一路 |
 | **0.1.20** | 2026-09-09 | **審批即時提醒 + 歷史會話載入修復**：新增權限審批提醒（[PR #2](https://github.com/TelosmaYLX/dsh-session-notify/pull/2) 由 [@YiHui-Liu](https://github.com/YiHui-Liu) 貢獻——`approval/asked` 投影 + 客戶端三路信號兜底）；修復 0.1.19 回歸：投影註冊契約改雙代並存（`schema`/`view` 與 `stateSchema`/`wire` 同時註冊），舊宿主開啟歷史會話不再因 `undefined.parse` 失敗；客戶端 `uiSession` 移出 `inject` 改 `ctx.get` 可選查找，避免服務缺席時通知與設定面板整體失效 |
