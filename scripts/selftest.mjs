@@ -109,11 +109,67 @@ check('language 仍是受限 union（非法值被拒）', (() => {
   return Boolean(host.Config['~standard'].validate({ language: 'nope' }).issues) &&
     !host.Config['~standard'].validate({ language: 'zh-tw' }).issues
 })())
+// 旧宿主兼容：volatile() 是 schemastery >= 3.18.3 才有的 API（3.18.1 / 3.18.2 里没有），
+// 而 buildSettingsSchema() 在模块顶层被调用 → 直接 .volatile() 会让旧宿主上**整个插件
+// 加载失败**（TypeError）。用「没有 volatile 的 schemastery 替身」验证仍能构造 schema。
+check('无 volatile() 的旧 schemastery 也能构造 schema（模块顶层不会抛）', (() => {
+  const host = hostModule
+  if (host === null || typeof host.buildSettingsSchema !== 'function') return false
+  const node = () => ({
+    type: 'string',
+    meta: {},
+    dict: {},
+    default(v) { this.meta.default = v; return this },
+    min() { return this },
+    max() { return this },
+  })
+  const fake = {
+    string: node,
+    number: node,
+    boolean: node,
+    union() { return node() },
+    object(dict) { const n = node(); n.type = 'object'; n.dict = dict; return n },
+  }
+  try {
+    const schema = host.buildSettingsSchema(fake)
+    return Object.keys(schema.dict).length === 21
+  } catch {
+    return false
+  }
+})())
+check('旧 schemastery（无 volatile）下不调用 volatile()，字段结构仍完整', (() => {
+  const host = hostModule
+  if (host === null || typeof host.buildSettingsSchema !== 'function') return false
+  const node = () => ({
+    type: 'string',
+    meta: {},
+    dict: {},
+    default(v) { this.meta.default = v; return this },
+    min() { return this },
+    max() { return this },
+  })
+  const fake = {
+    string: node,
+    number: node,
+    boolean: node,
+    union() { return node() },
+    object(dict) { const n = node(); n.type = 'object'; n.dict = dict; return n },
+  }
+  try {
+    const schema = host.buildSettingsSchema(fake)
+    // 替身上没有 volatile 方法，构造过程就不该调它；有调用即说明探测失效。
+    return typeof schema.dict.templates.dict.completed.volatile === 'undefined'
+  } catch {
+    return false
+  }
+})())
 check('sanitize 规整 audios', /const audios = \{ \.\.\.DEFAULT_SETTINGS\.audios \}/.test(hostSrc))
 check('sanitize 规整 volume 越界回落', /volume >= 0 && src\.volume <= 1\) \? src\.volume : DEFAULT_SETTINGS\.volume/.test(hostSrc))
 check('sanitize 规整 maxDuration 负数/非数回落', /src\.maxDuration >= 0\) \? src\.maxDuration : DEFAULT_SETTINGS\.maxDuration/.test(hostSrc))
 
-const settingsSrc = hostSrc.slice(hostSrc.indexOf('const DEFAULT_SETTINGS ='), hostSrc.indexOf('export const inject ='))
+// 切片里可能夹带 `export function buildSettingsSchema`（模块顶层构造 Config 的那个），
+// new Function 解析不了 export 关键字，先剥掉；它只被定义不被调用，不影响取值。
+const settingsSrc = hostSrc.slice(hostSrc.indexOf('const DEFAULT_SETTINGS ='), hostSrc.indexOf('export const inject =')).replace(/^export /gm, '')
 const sanitizeSettings = new Function(`${settingsSrc}; return sanitizeSettings`)()
 const s0 = sanitizeSettings({})
 check('空输入 → audios 全空（默认不设提示音）', Object.keys(s0.audios).length === 6 && Object.values(s0.audios).every((v) => v === ''))
