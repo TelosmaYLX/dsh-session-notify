@@ -701,7 +701,7 @@ group('6a3 「图片」折叠区与弹窗留白')
   // 弹窗：底部留白 + 吸顶头 + 尽量占满可用高度
   check('弹窗底部留白 24px（内容不贴下沿被切断）', /padding: '8px 12px 24px'/.test(clientSrc))
   check('弹窗头部吸顶（滚动时标题与关闭按钮不滚走）', /position: 'sticky', top: '0'/.test(clientSrc))
-  check('弹窗用 calc(100vh - 32px) 而非固定 82vh（少截断）', /maxHeight: 'calc\(100vh - 32px\)'/.test(clientSrc))
+  check('弹窗高度用 61.8vh（黄金比，用户指定）', /maxHeight: '61\.8vh'/.test(clientSrc))
 }
 
 // ---------------------------------------------- 6b. 音量设置真正生效（试听即按当前音量）
