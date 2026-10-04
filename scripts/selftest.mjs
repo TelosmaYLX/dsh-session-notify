@@ -504,14 +504,21 @@ const baseValue = {
 }
 {
   const h = buildHarness(JSON.parse(JSON.stringify(baseValue)), true)
+  // 设置 → 内置插件 的独立页签：宿主不传 view，整页都是本面板 → 必须**默认展开**。
+  const tabNodes = flatten(h.Card({}))
+  check('独立页签（无 view）默认展开：直接渲染音量滑块', tabNodes.some((n) => n.props.type === 'range'))
+  check('独立页签无折叠头（aria-expanded 头按钮不出现）', !tabNodes.some((n) => n.type === 'button' && n.props['aria-expanded'] === false))
+}
+{
+  const h = buildHarness(JSON.parse(JSON.stringify(baseValue)), true)
   check('设置卡片注册成功', typeof h.Card === 'function')
-  let nodes = flatten(h.Card({}))
+  let nodes = flatten(h.Card({ view: 'page' }))
   check('折叠态不渲染音量行', !nodes.some((n) => n.props.type === 'range'))
   const head = nodes.find((n) => n.type === 'button' && n.props['aria-expanded'] === false)
   check('存在折叠头按钮', !!head)
   if (head) head.props.onClick({})
   h.React.__store.idx = 0
-  nodes = flatten(h.Card({}))
+  nodes = flatten(h.Card({ view: 'page' }))
   const foldHead = (list, label) => list.find((n) => n.type === 'button' && Array.isArray(n.children)
     && n.children.some((c) => c && Array.isArray(c.children) && c.children.length === 1 && c.children[0] === label))
   // 「音频」折叠区**默认展开** → 展开卡片后立刻能看到音量滑块与「时长」滑块（两个 range）
@@ -524,12 +531,12 @@ const baseValue = {
   check('存在「音频」折叠区入口', !!audioHead)
   if (audioHead) audioHead.props.onClick({}) // 折叠
   h.React.__store.idx = 0
-  nodes = flatten(h.Card({}))
+  nodes = flatten(h.Card({ view: 'page' }))
   check('点折叠头可收起（滑块隐藏）', nodes.filter((n) => n.props.type === 'range').length === 0)
   const audioHead2 = foldHead(nodes, '音频')
   if (audioHead2) audioHead2.props.onClick({}) // 再展开
   h.React.__store.idx = 0
-  nodes = flatten(h.Card({}))
+  nodes = flatten(h.Card({ view: 'page' }))
   ranges = nodes.filter((n) => n.props.type === 'range')
   check('再点一次重新展开', ranges.length === 2, String(ranges.length))
   if (volSlider) {
@@ -586,7 +593,7 @@ const baseValue = {
   check('6 个状态行各有插入按钮', plus.length === 6, String(plus.length))
   if (plus.length) plus[0].props.onClick({})
   h.React.__store.idx = 0
-  nodes = flatten(h.Card({}))
+  nodes = flatten(h.Card({ view: 'page' }))
   const audioBtn = nodes.find((n) => n.type === 'button' && n.props.title === '选择本地音频文件（作为该状态的提示音）')
   check('插入菜单含「音频」按钮', !!audioBtn)
   if (audioBtn) {
@@ -594,7 +601,7 @@ const baseValue = {
     audioBtn.props.onClick({})
     check('点击弹出音频文件选择（accept=audio/*）', h.created.some((el) => el.tag === 'input' && el.accept === 'audio/*' && el.clicked))
     h.React.__store.idx = 0
-    const after = flatten(h.Card({}))
+    const after = flatten(h.Card({ view: 'page' }))
     const audioBtn2 = after.find((n) => n.type === 'button' && n.props.title === '选择本地音频文件（作为该状态的提示音）')
     check('已插 {audio} → 按钮置灰（唯一性约束）', !!audioBtn2 && audioBtn2.props.disabled === true)
   }
@@ -609,15 +616,15 @@ group('6b 音量设置生效（试听按当前音量）')
     const value = JSON.parse(JSON.stringify(baseValue))
     value.audios = { completed: AUDIO_URI } // 有提示音，「试听」才可用
     const h = buildHarness(value, useWebAudio)
-    let nodes = flatten(h.Card({}))
+    let nodes = flatten(h.Card({ view: 'page' }))
     const head = nodes.find((n) => n.type === 'button' && n.props['aria-expanded'] === false)
     if (head) head.props.onClick({})
     h.React.__store.idx = 0
-    nodes = flatten(h.Card({}))
+    nodes = flatten(h.Card({ view: 'page' }))
     const range = nodes.find((n) => n.props.type === 'range' && n.props.max === 100)
     if (range) range.props.onChange({ target: { value: '35' } }) // 草稿 volume = 0.35
     h.React.__store.idx = 0
-    nodes = flatten(h.Card({}))
+    nodes = flatten(h.Card({ view: 'page' }))
     const testBtn = nodes.find((n) => n.type === 'button' && n.props.title === '试听该提示音' && n.props.disabled === false)
     if (testBtn) testBtn.props.onClick({})
     return { h, testBtn }
@@ -637,11 +644,11 @@ group('6c 保存只写变化字段')
   const byText = (list, type, text) => list.find((n) => n.type === type && Array.isArray(n.children) && n.children[0] === text)
   const saveOf = (h) => {
     h.React.__store.idx = 0
-    const nodes = flatten(h.Card({}))
+    const nodes = flatten(h.Card({ view: 'page' }))
     const head = nodes.find((n) => n.type === 'button' && n.props['aria-expanded'] === false)
     if (head) head.props.onClick({})
     h.React.__store.idx = 0
-    return byText(flatten(h.Card({})), 'button', '保存')
+    return byText(flatten(h.Card({ view: 'page' })), 'button', '保存')
   }
   const value = JSON.parse(JSON.stringify(baseValue))
   value.templates = { completed: '{audio}x', error: '', aborted: '', blocked: '', 'max-tokens': '', question: '' }
@@ -650,7 +657,7 @@ group('6c 保存只写变化字段')
   value.maxDuration = 0
   const h = buildHarness(value, true)
   const settle = () => new Promise((r) => setTimeout(r, 5))
-  const render = () => { h.React.__store.idx = 0; return flatten(h.Card({})) }
+  const render = () => { h.React.__store.idx = 0; return flatten(h.Card({ view: 'page' })) }
   let nodes = render()
   const cardHead = nodes.find((n) => n.type === 'button' && n.props['aria-expanded'] === false)
   if (cardHead) cardHead.props.onClick({}) // 展开卡片（「音频」区默认已展开）
