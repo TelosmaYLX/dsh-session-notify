@@ -348,7 +348,7 @@ const wire = [
   ['只有全局提示音时试听按钮也可用', /return globalAudioOf\(form\) \/\/ 只有全局提示音时/],
   ['最长播放时长输入行', /function maxDurationRow\(form, tt\)/],
   ['「音频」折叠区默认展开', /var audioFoldState = useState\(true\)/],
-  ['「音频」区不再有说明文案', !/audioHint/.test(clientSrc)],
+  ['「音频」区不再有说明文案（大小写不敏感，含 globalAudioHint 变体）', !/audiohint/i.test(clientSrc)],
   ['保存时剥除重复 {audio}', /templates\[k\] = dedupeAudioTag\(flat\['tpl-' \+ k\]\)/],
   ['插入按钮带唯一性约束', /disabled: hasAudioTag\(tplValue\)/],
   ['编辑器 onChange 剥除重复标签', /var next = dedupeAudioTag\(tpl\)/],
