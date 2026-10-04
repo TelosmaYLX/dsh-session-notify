@@ -75,9 +75,9 @@ check('宿主 volatileForm 判定不会跳过本条目', (() => {
   const host = hostModule
   return host !== null && volatileLeaves(host.Config).length > 0
 })())
-check('schema 投影出 21 个顶层字段', (() => {
+check('schema 投影出 22 个顶层字段', (() => {
   const host = hostModule
-  return host !== null && Object.keys(host.Config.dict).length === 21
+  return host !== null && Object.keys(host.Config.dict).length === 22
 })())
 check('schema 投影含 audios 六键', (() => {
   const host = hostModule
@@ -132,7 +132,7 @@ check('无 volatile() 的旧 schemastery 也能构造 schema（模块顶层不�
   }
   try {
     const schema = host.buildSettingsSchema(fake)
-    return Object.keys(schema.dict).length === 21
+    return Object.keys(schema.dict).length === 22
   } catch {
     return false
   }
@@ -164,6 +164,7 @@ check('旧 schemastery（无 volatile）下不调用 volatile()，字段结构�
   }
 })())
 check('sanitize 规整 audios', /const audios = \{ \.\.\.DEFAULT_SETTINGS\.audios \}/.test(hostSrc))
+check('sanitize 规整 globalAudio（非字符串回落空串）', /globalAudio: typeof src\.globalAudio === 'string' \? src\.globalAudio : ''/.test(hostSrc))
 check('sanitize 规整 volume 越界回落', /volume >= 0 && src\.volume <= 1\) \? src\.volume : DEFAULT_SETTINGS\.volume/.test(hostSrc))
 check('sanitize 规整 maxDuration 负数/非数回落', /src\.maxDuration >= 0\) \? src\.maxDuration : DEFAULT_SETTINGS\.maxDuration/.test(hostSrc))
 
@@ -174,6 +175,10 @@ const sanitizeSettings = new Function(`${settingsSrc}; return sanitizeSettings`)
 const s0 = sanitizeSettings({})
 check('空输入 → audios 全空（默认不设提示音）', Object.keys(s0.audios).length === 6 && Object.values(s0.audios).every((v) => v === ''))
 check('空输入 → volume 默认 0.6', s0.volume === 0.6, String(s0.volume))
+check('空输入 → globalAudio 为空串（不启用全局兜底）', s0.globalAudio === '', JSON.stringify(s0.globalAudio))
+const sGA = sanitizeSettings({ globalAudio: 'data:audio/mpeg;base64,BBB' })
+check('globalAudio 保留合法 data URI', sGA.globalAudio === 'data:audio/mpeg;base64,BBB')
+check('globalAudio 非字符串回落空串', sanitizeSettings({ globalAudio: 123 }).globalAudio === '' && sanitizeSettings({ globalAudio: { a: 1 } }).globalAudio === '')
 const s1 = sanitizeSettings({ audios: { completed: 'data:audio/mpeg;base64,AAA', bogus: 'x' }, volume: 0.25 })
 check('audios 保留合法键、丢弃多余键', s1.audios.completed === 'data:audio/mpeg;base64,AAA' && !('bogus' in s1.audios) && s1.audios.error === '')
 check('volume 0.25 保留', s1.volume === 0.25)
@@ -309,12 +314,13 @@ const wire = [
   ['mediaOf 带上 maxDuration', /function mediaOf\(kind, volume\) \{[\s\S]{0,400}maxDuration: currentMaxDuration\(\)/],
   ['currentMaxDuration 读设置文档', /var v = snap && snap\.value \? snap\.value\.maxDuration : undefined/],
   ['三处媒体调用带音量', /mediaOf\('question', currentVolume\(\)\)[\s\S]*mediaOf\('approval', currentVolume\(\)\)/],
-  ['completion 带 kind + tags 门控', /var mkind = proj && proj\.kind \? proj\.kind : 'completed'[\s\S]{0,400}proj\.tags\.audio === false\) media\.audioData = ''/],
+  ['completion 带 kind + tags 门控', /var mkind = proj && proj\.kind \? proj\.kind : 'completed'[\s\S]{0,400}proj\.tags\.audio === false\) media\.audioData = media\.globalAudio/],
+  ['mediaOf：按原因音频优先、否则回落全局提示音', /if \(kind && aus && typeof aus\[kind\] === 'string'\) out\.audioData = aus\[kind\][\s\S]{0,120}out\.globalAudio = String\(st\.value\.globalAudio \|\| ''\)[\s\S]{0,120}if \(!out\.audioData\) out\.audioData = out\.globalAudio/],
   ['readNoticeAny 返回 kind/tags', /kind: typeof pv\.kind === 'string' && pv\.kind !== '' \? pv\.kind : 'completed'[\s\S]{0,120}tags: \(pv\.tags && typeof pv\.tags === 'object'\) \? pv\.tags : DEFAULT_TAGS/],
   ['旧宿主兜底 DEFAULT_TAGS', /var DEFAULT_TAGS = \{ image: true, icon: true, audio: true \}/],
-  ['保存写 audios / volume / maxDuration（计划表覆盖 18 个字段）', (() => {
+  ['保存写 audios / globalAudio / volume / maxDuration（计划表覆盖 19 个字段）', (() => {
     const planKeys = [...clientSrc.matchAll(/\{ key: '([a-zA-Z]+)', next: /g)].map((m) => m[1])
-    const want = ['language', 'templates', 'titleTemplate', 'titleTemplates', 'pushModeBlur', 'pushModeFocus', 'skipSubagents', 'imageUrl', 'iconUrl', 'imagePreviewUrl', 'iconPreviewUrl', 'images', 'icons', 'imagePreviews', 'iconPreviews', 'audios', 'volume', 'maxDuration']
+    const want = ['language', 'templates', 'titleTemplate', 'titleTemplates', 'pushModeBlur', 'pushModeFocus', 'skipSubagents', 'imageUrl', 'iconUrl', 'imagePreviewUrl', 'iconPreviewUrl', 'images', 'icons', 'imagePreviews', 'iconPreviews', 'audios', 'globalAudio', 'volume', 'maxDuration']
     return want.every((k) => planKeys.includes(k)) && planKeys.length === want.length
   })()],
   // 优化 A：只写变化字段（每次 scope.set 都是一次全量落盘 + 整段视图回传，18 次全写在大音频下被放大 18 倍）
@@ -328,7 +334,18 @@ const wire = [
   ['预设载入 maxDuration（旧预设保留当前值）', /if \(typeof entry\.maxDuration === 'number' && Number\.isFinite\(entry\.maxDuration\) && entry\.maxDuration >= 0\) next\.maxDuration = entry\.maxDuration/],
   ['一次性 unset 清理已撤销（设置项回来了）', !/scope\.unset\('maxDuration'\)/.test(clientSrc)],
   ['上传不做截断（无 trim 工具链）', !/trimLimitFor|TRIM_MARGIN_SECONDS|encodeWavDataUri|trimAudioDataUri|audioDurationOf/.test(clientSrc)],
-  ['上传按原样写入草稿', /setVal\('audio-' \+ field, uri\)\s*\n\s*log\('audio picked for '/],
+  ['上传按原样写入草稿', /setVal\(draftKey, uri\)\s*\n\s*log\('audio picked for '/],
+  ['按原因音频与全局音频共用读取逻辑', /function pickReasonAudio\(field\) \{ pickAudioInto\('audio-' \+ field, field\) \}[\s\S]{0,120}function pickGlobalAudio\(\) \{ pickAudioInto\('globalAudio', 'global'\) \}/],
+  ['全局提示音行存在（添加/替换/试听/清除）', (() => {
+    return /function globalAudioRow\(form, tt\)/.test(clientSrc) &&
+      /tt\.globalAudioAdd/.test(clientSrc) && /tt\.globalAudioReplace/.test(clientSrc) &&
+      /pickGlobalAudio\(\)/.test(clientSrc) && /setVal\('globalAudio', ''\)/.test(clientSrc)
+  })()],
+  ['全局提示音行已排进「音频」折叠区（音量 → 时长 → 全局提示音）', /volumeRow\(cur, t\),\s*\n\s*maxDurationRow\(cur, t\),\s*\n\s*globalAudioRow\(cur, t\),/],
+  ['全局提示音只显示摘要不铺 base64', /function audioSummary\(uri\)[\s\S]{0,260}return kind \+ ' · ' \+ kb \+ ' KB'/],
+  ['重置会清空全局提示音', /scope\.set\('globalAudio', def\.globalAudio\)/],
+  ['DEFAULT_FLAT 含 globalAudio', /globalAudio: '',\s*\n\s*volume: DEFAULT_VOLUME,/],
+  ['只有全局提示音时试听按钮也可用', /return globalAudioOf\(form\) \/\/ 只有全局提示音时/],
   ['最长播放时长输入行', /function maxDurationRow\(form, tt\)/],
   ['「音频」折叠区默认展开', /var audioFoldState = useState\(true\)/],
   ['「音频」区不再有说明文案', !/audioHint/.test(clientSrc)],
@@ -371,7 +388,7 @@ const wire = [
   // 音量设置真正生效（试听/胶囊按钮/测试通知都按当前音量）+ 音频设置收进「音频」折叠区
   ['试听按当前音量播放（不再固定满音量）', /toggleAlertSound\(preview, vol, maxSec\)/],
   ['胶囊按钮按当前音量 + 最长时长播放', /toggleAlertSound\(src, volumeOf\(cur\), maxDurationOf\(cur\)\)/],
-  ['发送测试通知按当前音量', /audioData: audioOf\(cur, field\),\s*\n\s*volume: volumeOf\(cur\),/],
+  ['发送测试通知按当前音量', /audioData: \(hasAudioTag\(templateOf\(cur, field\)\) \? audioOf\(cur, field\) : ''\) \|\| globalAudioOf\(cur\),\s*\n\s*volume: volumeOf\(cur\),/],
   ['「音频」折叠区展开/收起', /setAudioFoldOpen\(!audioFoldOpen\)/],
   ['「音量」标签排在滑块前面', /tt\.volume\),\s*\n\s*h\('input', \{\s*\n\s*type: 'range'/],
   ['提示音探针（自动化断言用）', /alertAudio: function \(action, src, volume, maxSeconds\)/],
@@ -693,6 +710,7 @@ function loadClient() {
   const stops = []
   const ramps = [] // 增益自动化：{ type: 'set'|'ramp', value, at }
   let decodeCalls = 0
+  const decodedLens = [] // 每次 decodeAudioData 的输入字节数（用于断言"播的是哪个音频"）
   let lastGain = null
   class FakeParam {
     constructor(v) { this.value = v }
@@ -714,6 +732,7 @@ function loadClient() {
     }
     decodeAudioData(buf, ok, err) {
       decodeCalls++
+      decodedLens.push(buf ? buf.byteLength : -1) // 记录解码输入长度 → 可区分「播放的是哪个音频」
       const decoded = { duration: 1 }
       try { ok && ok(decoded) } catch (e) { err && err(e) }
       return Promise.resolve(decoded)
@@ -745,10 +764,11 @@ function loadClient() {
     FakeAudio,
     undefined,
   )
-  return { mod, plays, stops, ramps, toasts, win, decode: () => decodeCalls }
+  return { mod, plays, stops, ramps, toasts, win, decode: () => decodeCalls, decodedLens: () => decodedLens.slice() }
 }
-const AUDIO = 'data:audio/wav;base64,UklGRg=='
-function runCompletion({ audio, template, volume, maxDuration, pushMode, tags }) {
+const AUDIO = 'data:audio/wav;base64,UklGRg==' // 解码后 4 字节
+const GLOBAL_AUDIO = 'data:audio/wav;base64,UklGRgAA' // 解码后 5 字节（与 AUDIO 区分，用于断言播放源）
+function runCompletion({ audio, template, volume, maxDuration, pushMode, tags, globalAudio }) {
   const h = loadClient()
   const session = {
     id: 'sess-1', displayTitle: 'Demo', running: false, cwd: 'F:\\tmp', origin: 'user',
@@ -762,6 +782,7 @@ function runCompletion({ audio, template, volume, maxDuration, pushMode, tags })
     language: 'zh', templates: { completed: template }, titleTemplate: '', titleTemplates: {},
     pushModeBlur: pushMode, pushModeFocus: pushMode, skipSubagents: true,
     images: {}, icons: {}, imagePreviews: {}, iconPreviews: {}, audios: { completed: audio }, volume,
+    ...(globalAudio === undefined ? {} : { globalAudio }),
   }, maxDuration === undefined ? {} : { maxDuration })
   h.mod.apply({
     sessions: { list: { getSnapshot: () => snapshot, subscribe: (fn) => { listener = fn; return () => {} }, binding: () => null } },
@@ -777,7 +798,7 @@ const TAG_NO = { image: false, icon: false, audio: false }
 const TAG_YES = { image: false, icon: false, audio: true }
 {
   let h = runCompletion({ audio: AUDIO, template: '会话「{title}」已完成', volume: 0.6, pushMode: 'toast', tags: TAG_NO })
-  check('未插 {audio}（tags.audio=false）→ 不播放', h.plays.length === 0, JSON.stringify(h.plays))
+  check('未插 {audio} 且没设全局提示音 → 不播放', h.plays.length === 0, JSON.stringify(h.plays))
   check('未插 {audio} → 仍推送页内提示', h.toasts.length >= 1, String(h.toasts.length))
 
   h = runCompletion({ audio: AUDIO, template: '会话「{title}」已完成{audio}', volume: 0.6, pushMode: 'toast', tags: TAG_YES })
@@ -788,7 +809,29 @@ const TAG_YES = { image: false, icon: false, audio: true }
 
   check('音量 0 → 静音（不播放）', runCompletion({ audio: AUDIO, template: '{audio}x', volume: 0, pushMode: 'toast', tags: TAG_YES }).plays.length === 0)
   check('音量 1 → 满音量播放', runCompletion({ audio: AUDIO, template: '{audio}x', volume: 1, pushMode: 'toast', tags: TAG_YES }).plays[0].volume === 1)
-  check('插了标签但没选音频 → 不播放', runCompletion({ audio: '', template: '{audio}x', volume: 0.8, pushMode: 'toast', tags: TAG_YES }).plays.length === 0)
+  check('插了标签但没选音频、也没全局提示音 → 不播放', runCompletion({ audio: '', template: '{audio}x', volume: 0.8, pushMode: 'toast', tags: TAG_YES }).plays.length === 0)
+
+  // ---- 全局提示音兜底（优先级低于「内容里为该状态指定的音频」）----
+  // 播放的是哪个音频：按 decodeAudioData 收到的字节数区分（两个 URI 解码长度不同）
+  const bytes = (uri) => Buffer.from(uri.split(',')[1], 'base64').length
+  h = runCompletion({ audio: '', template: '会话「{title}」已完成', volume: 0.6, pushMode: 'toast', tags: TAG_NO, globalAudio: GLOBAL_AUDIO })
+  check('未插 {audio} + 设了全局提示音 → 播放全局提示音', h.plays.length === 1 && h.decodedLens()[0] === bytes(GLOBAL_AUDIO),
+    JSON.stringify(h.plays) + ' lens=' + JSON.stringify(h.decodedLens()) + ' want=' + bytes(GLOBAL_AUDIO))
+  check('全局提示音同样受音量控制', h.plays[0] && Math.abs(h.plays[0].volume - 0.6) < 1e-9, JSON.stringify(h.plays))
+
+  h = runCompletion({ audio: '', template: '{audio}x', volume: 0.6, pushMode: 'toast', tags: TAG_YES, globalAudio: GLOBAL_AUDIO })
+  check('插了 {audio} 但该状态没选音频 → 回落全局提示音', h.plays.length === 1 && h.decodedLens()[0] === bytes(GLOBAL_AUDIO),
+    'lens=' + JSON.stringify(h.decodedLens()))
+
+  h = runCompletion({ audio: AUDIO, template: '{audio}x', volume: 0.6, pushMode: 'toast', tags: TAG_YES, globalAudio: GLOBAL_AUDIO })
+  check('内容里指定的音频优先于全局提示音', h.plays.length === 1 && h.decodedLens()[0] === bytes(AUDIO),
+    'lens=' + JSON.stringify(h.decodedLens()) + ' want=' + bytes(AUDIO))
+
+  check('音量 0 时全局提示音一并静音', runCompletion({ audio: '', template: 'x', volume: 0, pushMode: 'toast', tags: TAG_NO, globalAudio: GLOBAL_AUDIO }).plays.length === 0)
+  check('该时机「不通知」→ 全局提示音一并静默', (() => {
+    const r = runCompletion({ audio: '', template: 'x', volume: 0.6, pushMode: 'off', tags: TAG_NO, globalAudio: GLOBAL_AUDIO })
+    return r.plays.length === 0 && r.toasts.length === 0
+  })())
 
   h = runCompletion({ audio: AUDIO, template: '{audio}x', volume: 0.6, pushMode: 'off', tags: TAG_YES })
   check('该时机「不通知」→ 提示音一并静默', h.plays.length === 0 && h.toasts.length === 0)
