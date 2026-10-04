@@ -670,6 +670,40 @@ group('6a2 页脚铃铛（sidebar.footer.action + 自绘浮层）')
   // 才会落在「设置」右侧；order 缺失或过小都会被挤到用量面板上面那一行。
   check('铃铛用 flex order 排在官方「设置」区之后（落在其右侧）', /order: 4,/.test(clientSrc), '未找到 order: 4')
 }
+// ---------------------------------------------- 6a3. 「图片」折叠区 + 弹窗留白
+group('6a3 「图片」折叠区与弹窗留白')
+{
+  const h = buildHarness(JSON.parse(JSON.stringify(baseValue)), true)
+  let nodes = flatten(h.Card({ view: 'page' }))
+  const head = nodes.find((n) => n.type === 'button' && n.props['aria-expanded'] === false)
+  if (head) head.props.onClick({}) // 展开外层卡片
+  h.React.__store.idx = 0
+  nodes = flatten(h.Card({ view: 'page' }))
+  const foldHead = (list, label) => list.find((n) => n.type === 'button' && Array.isArray(n.children)
+    && n.children.some((c) => c && Array.isArray(c.children) && c.children.length === 1 && c.children[0] === label))
+  const hasNote = (list) => list.some((n) => n.type === '#text' && n.text.indexOf('本地上传会自动处理') >= 0)
+  check('「图片」折叠区默认收起（说明文案与两张上传卡片都不渲染）', !hasNote(nodes))
+  const imgHead = foldHead(nodes, '图片')
+  check('存在「图片」折叠区入口', !!imgHead)
+  if (imgHead) imgHead.props.onClick({})
+  h.React.__store.idx = 0
+  nodes = flatten(h.Card({ view: 'page' }))
+  check('展开「图片」后同时渲染说明文案', hasNote(nodes))
+  check('展开「图片」后同时渲染通知图标 + 通知大图两张卡片',
+    nodes.some((n) => n.type === 'button' && n.props.title === '选择本地图片（自动压缩为通知图标）') &&
+    nodes.some((n) => n.type === 'button' && n.props.title === '选择本地图片（自动压缩为通知大图）'))
+  check('「图片」折叠头用 DIVIDER 作上边线（同时收尾「音频」区，不新增样式）',
+    /key: 'image-fold', style: \{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px 0', borderTop: DIVIDER \}/.test(clientSrc))
+  check('媒体卡片与说明已收进折叠体（不再裸在面板顶层）',
+    !/key: 'media-note', style: \{ fontSize: '12px', color: 'var\(--dsw-alias-label-tertiary, rgba\(127,127,127,0\.8\)\)', lineHeight: 1\.6, padding: '8px 0 0' \}/.test(clientSrc))
+}
+{
+  // 弹窗：底部留白 + 吸顶头 + 尽量占满可用高度
+  check('弹窗底部留白 24px（内容不贴下沿被切断）', /padding: '8px 12px 24px'/.test(clientSrc))
+  check('弹窗头部吸顶（滚动时标题与关闭按钮不滚走）', /position: 'sticky', top: '0'/.test(clientSrc))
+  check('弹窗用 calc(100vh - 32px) 而非固定 82vh（少截断）', /maxHeight: 'calc\(100vh - 32px\)'/.test(clientSrc))
+}
+
 // ---------------------------------------------- 6b. 音量设置真正生效（试听即按当前音量）
 group('6b 音量设置生效（试听按当前音量）')
 {
